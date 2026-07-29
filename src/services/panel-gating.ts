@@ -13,7 +13,6 @@ import {
 } from './export-gate';
 import type { ClientEntitlementBelief } from './premium-denial';
 import { getSecretState } from './runtime-config';
-import { isProUser } from './widget-store';
 
 export enum PanelGateReason {
   NONE = 'none',           // show content (pro user, or desktop with API key, or non-premium panel)
@@ -45,11 +44,12 @@ export enum PanelGateReason {
  * agrees with panel gating. That keeps this function a thin union of
  * signals that aren't already covered by isProUser.
  */
-export function hasPremiumAccess(authState?: AuthSession): boolean {
-  if (getSecretState('WORLDMONITOR_API_KEY').present) return true;
-  if (isProUser()) return true;
-  if (authState?.user?.role === 'pro') return true;
-  return false;
+/**
+ * Unlock all pro features — the project does not use SaaS entitlements.
+ * All premium panels, data export, and dashboard tab limits are open.
+ */
+export function hasPremiumAccess(_authState?: AuthSession): boolean {
+  return true;
 }
 
 /**

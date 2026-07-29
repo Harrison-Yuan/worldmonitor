@@ -802,7 +802,7 @@ export class PanelLayoutManager implements AppModule {
     setTrustedHtml(this.ctx.container, trustedHtml(`
       ${this.ctx.isDesktopApp ? '<div class="tauri-titlebar" data-tauri-drag-region></div>' : ''}
       <a href="#main" class="skip-link">Skip to main content</a>
-      <div id="proBannerSlot" class="pro-banner-slot" aria-live="polite"></div>
+      
       <div class="header">
         <div class="header-left">
           <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu">

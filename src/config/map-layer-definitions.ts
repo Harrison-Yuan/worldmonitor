@@ -3,7 +3,7 @@ import type { MapLayers } from '@/types';
 import { isDesktopRuntime } from '@/services/runtime';
 
 export type MapRenderer = 'flat' | 'globe';
-export type MapVariant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy';
+export type MapVariant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy' | 'founder';
 
 const _desktop = isDesktopRuntime();
 
@@ -329,6 +329,20 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
     // Energy-adjacent context
     'sanctions', 'fires', 'climate', 'weather', 'outages', 'natural',
     'resilienceScore', 'dayNight',
+  ],
+  founder: [
+    // Economic & trade intelligence
+    'economic', 'tradeRoutes', 'sanctions', 'ciiChoropleth',
+    'stockExchanges', 'financialCenters', 'centralBanks',
+    'gulfInvestments', 'commodityHubs', 'commodityPorts',
+    // Infrastructure
+    'cables', 'pipelines', 'outages', 'cyberThreats',
+    'datacenters', 'waterways', 'minerals',
+    // Context
+    'conflicts', 'hotspots', 'ucdpEvents', 'weather', 'natural',
+    'resilienceScore', 'dayNight',
+    // Tech
+    'startupHubs', 'cloudRegions', 'techHQs', 'techEvents',
   ],
 };
 

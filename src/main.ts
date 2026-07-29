@@ -20,6 +20,8 @@ if (SITE_VARIANT === 'happy') {
   // injected <link> errors, and a bare `void import(...)` let that escape to
   // onunhandledrejection (WORLDMONITOR-XT). See bootstrap/variant-theme.ts.
   void loadVariantThemeStylesheet('happy', () => import('./styles/happy-theme.css'));
+} else if (SITE_VARIANT === 'founder') {
+  void loadVariantThemeStylesheet('founder', () => import('./styles/founder-theme.css'));
 }
 
 // Activate the deferred dashboard app stylesheet. The build
@@ -405,11 +407,8 @@ installWebApiRedirect();
 installStaleBundleCheck();
 loadDesktopSecrets().catch(() => {});
 
-// Apply stored theme preference before app initialization (safety net for inline script)
-applyStoredTheme();
-applyFont();
-
-// Set data-variant on <html> so CSS theme overrides activate
+// Set data-variant on <html> BEFORE applyStoredTheme so the theme resolver
+// can check the variant (happy/founder → light default, others → dark).
 if (SITE_VARIANT && SITE_VARIANT !== 'full') {
   document.documentElement.dataset.variant = SITE_VARIANT;
 
@@ -420,6 +419,10 @@ if (SITE_VARIANT && SITE_VARIANT !== 'full') {
       .replace(/\/favico\/apple-touch-icon/g, `/favico/${SITE_VARIANT}/apple-touch-icon`);
   });
 }
+
+// Apply stored theme preference before app initialization (safety net for inline script)
+applyStoredTheme();
+applyFont();
 
 // Remove no-transition class after first paint to enable smooth theme transitions
 requestAnimationFrame(() => {
@@ -459,8 +462,44 @@ if (urlParams.get('settings') === '1') {
     .init()
     .then(() => {
       clearChunkReloadGuard(chunkReloadStorageKey);
+      // Founder variant: inject welcome dashboard after layout renders
+      if (SITE_VARIANT === 'founder') {
+        injectFounderWelcome();
+      }
     })
     .catch(console.error);
+}
+
+function injectFounderWelcome(): void {
+  const grid = document.getElementById('panelsGrid');
+  if (!grid) return;
+  const existing = document.getElementById('founder-welcome');
+  if (existing) return;
+
+  const welcome = document.createElement('div');
+  welcome.id = 'founder-welcome';
+  welcome.style.cssText = 'grid-column: 1 / -1';
+
+  const today = new Date();
+  const hour = today.getHours();
+  const greeting = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  welcome.innerHTML =
+    '<div class="founder-welcome-bar">' +
+      '<div class="founder-welcome-left">' +
+        '<div class="founder-welcome-greeting">Good ' + greeting + ', Founder</div>' +
+        '<div class="founder-welcome-subtitle">Opportunity signals \u00b7 ' + dateStr + '</div>' +
+      '</div>' +
+      '<div class="founder-welcome-right">' +
+        '<div class="founder-welcome-tag">' +
+          '<span class="founder-welcome-dot"></span>' +
+          '<span>Live Intelligence Feed</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  grid.insertBefore(welcome, grid.firstChild);
 }
 
 // Debug helpers for geo-convergence testing (remove in production)

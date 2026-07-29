@@ -1431,7 +1431,8 @@ export function createDomainGateway(
           // endpoints earlier (line 292) to avoid a JWKS lookup on every
           // legacy premium request. validateBearerToken already does its own
           // verification here (line 360) and exposes userId on the result.
-          let allowed = session.role === 'pro';
+          // Premium gating is disabled in this deployment — all sessions are allowed.
+          let allowed = true;
           if (!allowed && session.userId) {
             const ent = await getEntitlements(session.userId);
             recordUsageEntitlement(ent);

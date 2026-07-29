@@ -1,0 +1,333 @@
+/* ============================================================
+   Founder Variant Theme — Bright & Opportunity-Focused
+   Warm cream + crisp white + teal accent.
+   Unlayered CSS — wins over main.css's @layer base.
+   ============================================================ */
+
+/* ---------- Founder Light Mode (default) ---------- */
+:root[data-variant="founder"],
+:root[data-variant="founder"][data-theme="light"] {
+  /* Backgrounds — warm cream */
+  --bg: #F8F6F0;
+  --bg-secondary: #F0EDE6;
+  --surface: #FFFFFF;
+  --surface-hover: #F5F3EE;
+  --surface-active: #EBE7DE;
+
+  /* Borders — subtle warm gray */
+  --border: #E2DDD2;
+  --border-strong: #CCC6B8;
+  --border-subtle: #EDE9E0;
+
+  /* Text — warm dark charcoal */
+  --text: #1A1A2E;
+  --text-secondary: #3D3D4A;
+  --text-dim: #5E5E6B;
+  --text-muted: #7E7E8A;
+  --text-faint: #A0A0AA;
+  --text-ghost: #C0C0C8;
+  --accent: #1A1A2E;
+
+  /* Overlays & shadows — soft */
+  --overlay-subtle: rgba(13, 148, 136, 0.03);
+  --overlay-light: rgba(13, 148, 136, 0.05);
+  --overlay-medium: rgba(13, 148, 136, 0.08);
+  --overlay-heavy: rgba(13, 148, 136, 0.12);
+  --shadow-color: rgba(60, 50, 40, 0.08);
+  --darken-light: rgba(60, 50, 40, 0.06);
+  --darken-medium: rgba(60, 50, 40, 0.10);
+  --darken-heavy: rgba(60, 50, 40, 0.15);
+
+  /* Scrollbar */
+  --scrollbar-thumb: #CCC6B8;
+  --scrollbar-thumb-hover: #B0AA9C;
+
+  /* Input */
+  --input-bg: #F0EDE6;
+
+  /* Panels — crisp white */
+  --panel-bg: #FFFFFF;
+  --panel-border: #E2DDD2;
+
+  /* Map — light blue, airy */
+  --map-bg: #DCE8F0;
+  --map-grid: #C4D4E0;
+  --map-country: #E8E4D8;
+  --map-stroke: #C8C0B5;
+
+  /* Typography — clean sans-serif */
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Inter', system-ui, sans-serif;
+
+  /* Panel border radius — slightly rounded */
+  --panel-radius: 10px;
+
+  /* ── Severity levels: high-contrast for quick scanning ── */
+  --semantic-critical: #DC2626;
+  --semantic-high: #EA580C;
+  --semantic-elevated: #D97706;
+  --semantic-normal: #15803D;
+  --semantic-low: #0284C7;
+  --semantic-info: #0D9488;
+  --semantic-positive: #16A34A;
+
+  /* Threat levels */
+  --threat-critical: #DC2626;
+  --threat-high: #EA580C;
+  --threat-medium: #CA8A04;
+  --threat-low: #15803D;
+  --threat-info: #0284C7;
+
+  /* DEFCON levels */
+  --defcon-1: #DC2626;
+  --defcon-2: #EA580C;
+  --defcon-3: #D97706;
+  --defcon-4: #0284C7;
+  --defcon-5: #15803D;
+
+  /* Status indicators */
+  --status-live: #16A34A;
+  --status-cached: #D97706;
+  --status-unavailable: #DC2626;
+
+  /* Legacy aliases */
+  --red: #DC2626;
+  --green: #16A34A;
+  --yellow: #D97706;
+}
+
+/* ---------- Founder Dark Mode (optional) ---------- */
+:root[data-variant="founder"][data-theme="dark"] {
+  /* Backgrounds — deep charcoal, not pure black */
+  --bg: #1A1A2E;
+  --bg-secondary: #1E1E34;
+  --surface: #22223A;
+  --surface-hover: #2A2A44;
+  --surface-active: #2E2E4A;
+
+  /* Borders */
+  --border: #343450;
+  --border-strong: #444460;
+  --border-subtle: #282840;
+
+  /* Text — warm off-white */
+  --text: #E8E4DC;
+  --text-secondary: #C8C4BC;
+  --text-dim: #A0A098;
+  --text-muted: #808088;
+  --text-faint: #606068;
+  --text-ghost: #484850;
+  --accent: #E8E4DC;
+
+  /* Overlays */
+  --overlay-subtle: rgba(13, 148, 136, 0.05);
+  --overlay-light: rgba(13, 148, 136, 0.08);
+  --overlay-medium: rgba(13, 148, 136, 0.12);
+  --overlay-heavy: rgba(13, 148, 136, 0.18);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --darken-light: rgba(0, 0, 0, 0.12);
+  --darken-medium: rgba(0, 0, 0, 0.18);
+  --darken-heavy: rgba(0, 0, 0, 0.28);
+
+  /* Scrollbar */
+  --scrollbar-thumb: #444460;
+  --scrollbar-thumb-hover: #545470;
+
+  /* Input */
+  --input-bg: #282840;
+
+  /* Panels */
+  --panel-bg: #22223A;
+  --panel-border: #343450;
+
+  /* Map */
+  --map-bg: #1A2030;
+  --map-grid: #283040;
+  --map-country: #22283A;
+  --map-stroke: #3A4050;
+
+  /* Typography */
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Inter', system-ui, sans-serif;
+  --panel-radius: 10px;
+
+  /* Semantic colors — same as light for consistency */
+  --semantic-critical: #EF4444;
+  --semantic-high: #F97316;
+  --semantic-elevated: #EAB308;
+  --semantic-normal: #22C55E;
+  --semantic-low: #3B82F6;
+  --semantic-info: #14B8A6;
+  --semantic-positive: #22C55E;
+
+  --threat-critical: #EF4444;
+  --threat-high: #F97316;
+  --threat-medium: #EAB308;
+  --threat-low: #22C55E;
+  --threat-info: #3B82F6;
+
+  --defcon-1: #EF4444;
+  --defcon-2: #F97316;
+  --defcon-3: #EAB308;
+  --defcon-4: #3B82F6;
+  --defcon-5: #22C55E;
+
+  --status-live: #22C55E;
+  --status-cached: #EAB308;
+  --status-unavailable: #EF4444;
+
+  --red: #EF4444;
+  --green: #22C55E;
+  --yellow: #EAB308;
+}
+
+/* ── Founder-specific UI refinements ── */
+
+/* Softer panel corners */
+.panel {
+  border-radius: var(--panel-radius) !important;
+  box-shadow: 0 1px 3px var(--shadow-color) !important;
+}
+
+/* Panel headers — clean, minimal */
+.panel .panel-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 12px;
+}
+
+/* Map section — subtle shadow separation */
+.map-section {
+  box-shadow: 2px 0 8px var(--shadow-color);
+  z-index: 2;
+}
+
+/* Header — clean white bar */
+.header {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Links — teal accent */
+a, .link {
+  color: #0D9488;
+}
+a:hover, .link:hover {
+  color: #0F766E;
+}
+
+/* Buttons — teal primary */
+.btn-primary {
+  background: #0D9488 !important;
+  border-color: #0D9488 !important;
+  color: white !important;
+}
+.btn-primary:hover {
+  background: #0F766E !important;
+}
+
+/* Freshness badges — softer */
+.panel-freshness-badge {
+  opacity: 0.8;
+}
+
+/* Panel resize handles — subtle */
+.panel-resize-handle,
+.panel-col-resize-handle,
+.map-resize-handle,
+.map-width-resize-handle {
+  background: var(--border-subtle);
+}
+.panel-resize-handle:hover,
+.panel-col-resize-handle:hover,
+.map-resize-handle:hover,
+.map-width-resize-handle:hover {
+  background: var(--border-strong);
+}
+
+/* ── Founder variant accent on signals ── */
+
+/* Opportunity-highlighted data points */
+.founder-opportunity {
+  color: #0D9488;
+  font-weight: 600;
+}
+
+.founder-warning {
+  color: #D97706;
+  font-weight: 600;
+}
+
+.founder-danger {
+  color: #DC2626;
+  font-weight: 600;
+}
+
+/* ── Apply light theme by default for founder variant ── */
+:root[data-variant="founder"]:not([data-theme]) {
+  /* Already handled by :root[data-variant="founder"] above */
+}
+
+/* ── Founder Welcome Bar ── */
+.founder-welcome-bar {
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+  border-radius: 12px;
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.2);
+}
+
+.founder-welcome-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.founder-welcome-greeting {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.founder-welcome-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+}
+
+.founder-welcome-right {
+  display: flex;
+  align-items: center;
+}
+
+.founder-welcome-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.founder-welcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ADE80;
+  animation: founder-pulse 2s ease-in-out infinite;
+}
+
+@keyframes founder-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Founder Welcome Bar: Dark Mode ── */
+[data-variant="founder"][data-theme="dark"] .founder-welcome-bar {
+  background: linear-gradient(135deg, #0F766E 0%, #0D5C56 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

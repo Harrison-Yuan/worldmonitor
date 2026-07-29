@@ -253,7 +253,7 @@ function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDes
       // before CSS loads. Web builds always use 'full' — runtime hostname detection handles variants.
       if (activeVariant !== 'full') {
         result = result.replace(
-          /if\(v\)document\.documentElement\.dataset\.variant=v;/,
+          /if\(v\)document\.documentElement\.dataset\.variant=v;else document\.documentElement\.removeAttribute\('data-variant'\);/,
           `v='${activeVariant}';document.documentElement.dataset.variant=v;`
         );
       }
@@ -1660,6 +1660,16 @@ export default defineConfig(({ mode }) => {
           configure: (proxy) => {
             proxy.on('error', (err) => {
               console.log('ADS-B Exchange proxy error:', err.message);
+            });
+          },
+        },
+        // Catch-all: proxy remaining /api/* routes to the local sidecar
+        '/api': {
+          target: 'http://127.0.0.1:46123',
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              console.log('Sidecar proxy error:', err.message);
             });
           },
         },

@@ -6,6 +6,7 @@ import { isDesktopRuntime } from '@/services/runtime';
 import { getSecretState } from '@/services/runtime-config';
 // boundary-ignore: isEntitled is a pure state check with no side effects
 import { isEntitled } from '@/services/entitlements';
+import { FOUNDER_PANELS, FOUNDER_MAP_LAYERS, FOUNDER_MOBILE_MAP_LAYERS } from './founder-panels';
 
 const _desktop = isDesktopRuntime();
 
@@ -1107,7 +1108,7 @@ const ENERGY_MOBILE_MAP_LAYERS: MapLayers = {
 // UNIFIED PANEL REGISTRY
 // ============================================
 
-type PanelVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy';
+type PanelVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy' | 'founder';
 
 const VARIANT_PANEL_CONFIGS: Record<PanelVariant, Record<string, PanelConfig>> = {
   full: FULL_PANELS,
@@ -1116,6 +1117,7 @@ const VARIANT_PANEL_CONFIGS: Record<PanelVariant, Record<string, PanelConfig>> =
   commodity: COMMODITY_PANELS,
   energy: ENERGY_PANELS,
   happy: HAPPY_PANELS,
+  founder: FOUNDER_PANELS,
 };
 
 function getVariantPanelConfigs(variant: string): Record<string, PanelConfig> | undefined {
@@ -1132,6 +1134,7 @@ export const ALL_PANELS: Record<string, PanelConfig> = {
   ...TECH_PANELS,
   ...FINANCE_PANELS,
   ...FULL_PANELS,
+  ...FOUNDER_PANELS,
 };
 
 /** Per-variant canonical panel order (keys = which panels are enabled by default). */
@@ -1142,6 +1145,7 @@ export const VARIANT_DEFAULTS: Record<string, string[]> = {
   commodity: Object.keys(VARIANT_PANEL_CONFIGS.commodity),
   energy:    Object.keys(VARIANT_PANEL_CONFIGS.energy),
   happy:     Object.keys(VARIANT_PANEL_CONFIGS.happy),
+  founder:   Object.keys(VARIANT_PANEL_CONFIGS.founder),
 };
 
 /**
@@ -1311,7 +1315,9 @@ export const DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
         ? COMMODITY_MAP_LAYERS
         : SITE_VARIANT === 'energy'
           ? ENERGY_MAP_LAYERS
-          : FULL_MAP_LAYERS;
+          : SITE_VARIANT === 'founder'
+            ? FOUNDER_MAP_LAYERS
+            : FULL_MAP_LAYERS;
 
 export const MOBILE_DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
   ? HAPPY_MOBILE_MAP_LAYERS
@@ -1323,7 +1329,9 @@ export const MOBILE_DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
         ? COMMODITY_MOBILE_MAP_LAYERS
         : SITE_VARIANT === 'energy'
           ? ENERGY_MOBILE_MAP_LAYERS
-          : FULL_MOBILE_MAP_LAYERS;
+          : SITE_VARIANT === 'founder'
+            ? FOUNDER_MOBILE_MAP_LAYERS
+            : FULL_MOBILE_MAP_LAYERS;
 
 /** Maps map-layer toggle keys to their data-freshness source IDs (single source of truth). */
 export const LAYER_TO_SOURCE: Partial<Record<keyof MapLayers, DataSourceId[]>> = {

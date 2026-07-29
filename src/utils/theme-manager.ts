@@ -4,11 +4,11 @@ export type Theme = 'dark' | 'light';
 export type ThemePreference = 'auto' | 'dark' | 'light';
 
 const STORAGE_KEY = 'worldmonitor-theme';
-const DEFAULT_THEME: Theme = 'dark';
+const DEFAULT_THEME: Theme = 'light';
 
 function resolveThemeColor(theme: Theme, variant: string | undefined): string {
-  if (theme === 'dark') return variant === 'happy' ? '#1A2332' : '#0a0f0a';
-  return variant === 'happy' ? '#FAFAF5' : '#f8f9fa';
+  if (theme === 'dark') return variant === 'happy' ? '#1A2332' : variant === 'founder' ? '#1A1A2E' : '#0a0f0a';
+  return variant === 'happy' ? '#FAFAF5' : variant === 'founder' ? '#F8F6F0' : '#f8f9fa';
 }
 
 function updateThemeMetaColor(theme: Theme, variant = document.documentElement.dataset.variant): void {
@@ -115,8 +115,8 @@ export function applyStoredTheme(): void {
   } else if (hasExplicitPreference) {
     effective = raw as Theme;
   } else {
-    // No stored preference: happy defaults to light, others to dark
-    effective = variant === 'happy' ? 'light' : DEFAULT_THEME;
+    // No stored preference: default to light for all variants
+    effective = DEFAULT_THEME;
   }
 
   document.documentElement.dataset.theme = effective;

@@ -24,6 +24,7 @@ import { PIPELINES } from '@/config/pipelines';
 import { t } from '@/services/i18n';
 import { SITE_VARIANT } from '@/config/variant';
 import { getGlobeRenderScale, resolveGlobePixelRatio, resolvePerformanceProfile, subscribeGlobeRenderScaleChange, getGlobeTexture, GLOBE_TEXTURE_URLS, subscribeGlobeTextureChange, getGlobeVisualPreset, subscribeGlobeVisualPresetChange, type GlobeRenderScale, type GlobePerformanceProfile, type GlobeVisualPreset } from '@/services/globe-render-settings';
+import { getMapProvider, getMapTheme, isLightMapTheme } from '@/config/basemap';
 import {
   getLayerExplanation,
   getLayersForVariant,
@@ -489,6 +490,7 @@ export class GlobeMap {
   private unsubscribeGlobeQuality: (() => void) | null = null;
   private unsubscribeGlobeTexture: (() => void) | null = null;
   private unsubscribeVisualPreset: (() => void) | null = null;
+  private handleMapThemeChangeBound: (() => void) | null = null;
   private savedDefaultMaterial: any = null;
   private controls: GlobeControlsLike | null = null;
   private renderPaused = false;
@@ -688,10 +690,12 @@ export class GlobeMap {
     const initH = this.container.clientHeight || window.innerHeight;
 
     const initialTexture = getGlobeTexture();
+    const initialMapTheme = getMapTheme(getMapProvider());
+    const isLight = isLightMapTheme(initialMapTheme);
     globe
       .globeImageUrl(GLOBE_TEXTURE_URLS[initialTexture])
-      .backgroundImageUrl('')
-      .atmosphereColor('#4466cc')
+      .backgroundImageUrl(isLight ? '' : '/textures/night-sky.png')
+      .atmosphereColor(isLight ? '#88bbdd' : '#4466cc')
       .atmosphereAltitude(0.18)
       .width(initW)
       .height(initH)
@@ -753,6 +757,16 @@ export class GlobeMap {
     this.unsubscribeVisualPreset = subscribeGlobeVisualPresetChange((preset) => {
       this.applyVisualPreset(preset);
     });
+
+    // Apply map theme (light/dark) for background and atmosphere
+    this.applyMapTheme();
+
+    // Subscribe to map theme changes
+    this.handleMapThemeChangeBound = () => {
+      if (!this.globe || this.destroyed) return;
+      this.applyMapTheme();
+    };
+    window.addEventListener('map-theme-changed', this.handleMapThemeChangeBound);
 
     // Subscribe to texture changes (kept as-is)
     this.unsubscribeGlobeTexture = subscribeGlobeTextureChange((texture) => {
@@ -3741,6 +3755,20 @@ export class GlobeMap {
     this.cyanLight = null;
   }
 
+  /**
+   * Apply light/dark map theme to the 3D globe background and atmosphere.
+   * Called on init and on map-theme-changed event.
+   */
+  private applyMapTheme(): void {
+    if (!this.globe || this.destroyed) return;
+    const provider = getMapProvider();
+    const mapTheme = getMapTheme(provider);
+    const isLight = isLightMapTheme(mapTheme);
+    this.globe
+      .backgroundImageUrl(isLight ? '' : '/textures/night-sky.png')
+      .atmosphereColor(isLight ? '#88bbdd' : '#4466cc');
+  }
+
   private applyVisualPreset(preset: GlobeVisualPreset): void {
     if (!this.globe || this.destroyed) return;
     if (preset === 'enhanced') {
@@ -3863,6 +3891,10 @@ export class GlobeMap {
     this.unsubscribeGlobeTexture = null;
     this.unsubscribeVisualPreset?.();
     this.unsubscribeVisualPreset = null;
+    if (this.handleMapThemeChangeBound) {
+      window.removeEventListener('map-theme-changed', this.handleMapThemeChangeBound);
+      this.handleMapThemeChangeBound = null;
+    }
     // Stop attributing INP events to a globe that is no longer mounted (#5368).
     setGlobeMarkerLoad(null);
     if (this.visibilityHandler) {

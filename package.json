@@ -40,6 +40,7 @@
     "dev:happy": "cross-env VITE_VARIANT=happy vite",
     "dev:commodity": "cross-env VITE_VARIANT=commodity vite",
     "dev:energy": "cross-env VITE_VARIANT=energy vite",
+    "dev:founder": "cross-env VITE_VARIANT=founder vite",
     "postinstall": "cd blog-site && npm ci --prefer-offline",
     "prebuild:blog": "npm run product:facts",
     "build:blog": "cd blog-site && npm run build && rm -rf ../public/blog && mkdir -p ../public/blog && cp -r dist/* ../public/blog/",

@@ -81,6 +81,14 @@ const DEFAULT_THEME: Record<MapProvider, string> = {
   carto: 'dark-matter',
 };
 
+function isFounderVariant(): boolean {
+  try {
+    return document.documentElement.dataset.variant === 'founder';
+  } catch {
+    return false;
+  }
+}
+
 export function getMapProvider(): MapProvider {
   const stored = readStorageValue(STORAGE_KEY) as MapProvider | null;
   if (stored) {
@@ -96,10 +104,27 @@ export function setMapProvider(provider: MapProvider): void {
   writeStorageValue(STORAGE_KEY, provider);
 }
 
+/**
+ * Check whether the app-level theme suggests light map tiles.
+ * Priority: DOM data-theme attribute > founder variant fallback.
+ */
+function shouldDefaultToLightMapTheme(): boolean {
+  try {
+    if (document.documentElement.dataset.theme === 'light') return true;
+  } catch {}
+  return isFounderVariant();
+}
+
 export function getMapTheme(provider: MapProvider): string {
   const stored = readStorageValue(THEME_STORAGE_PREFIX + provider);
   const options = MAP_THEME_OPTIONS[provider];
   if (stored && options.some(o => o.value === stored)) return stored;
+  // When no stored preference, auto-detect from app-level theme
+  if (shouldDefaultToLightMapTheme()) {
+    if (provider === 'pmtiles' || provider === 'auto') return 'light';
+    if (provider === 'openfreemap') return 'positron';
+    if (provider === 'carto') return 'positron';
+  }
   return DEFAULT_THEME[provider];
 }
 
