@@ -108,6 +108,9 @@ export const STORAGE_KEYS = {
   //   1 → recovery has run; the set is post-migration and must NOT be
   //       re-recovered on subsequent loads (otherwise user-explicit
   //       full-category disabling would be silently undone forever).
+  //   2 → premium gating disabled; all sources re-enabled. The
+  //       disabledFeeds set is cleared entirely since source cap is
+  //       no longer enforced.
   disabledFeedsSchema: 'worldmonitor-disabled-feeds-schema',
   liveChannels: 'worldmonitor-live-channels',
   mapMode: 'worldmonitor-map-mode',          // 'flat' | 'globe'

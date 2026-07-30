@@ -1746,6 +1746,21 @@ export class App {
    * Safe to call multiple times (idempotent) — e.g. on auth state changes.
    */
   private enforceFreeTierLimits(): void {
+    // ── Schema v2: premium gating disabled — re-enable all sources ───
+    // Source caps are no longer enforced (isProUser always returns true),
+    // so the disabledFeeds set is cleared entirely. Any stale auto-disabled
+    // state from the old source-cap era is discarded.
+    const schemaVersionV1 = loadFromStorage<number>(STORAGE_KEYS.disabledFeedsSchema, 0);
+    if (schemaVersionV1 < 2) {
+      const disabled = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
+      if (disabled.length > 0) {
+        saveToStorage(STORAGE_KEYS.disabledFeeds, []);
+        this.state.disabledSources = new Set();
+        console.log(`[App] Schema v2 migration: cleared ${disabled.length} disabled source(s) (premium gating disabled)`);
+      }
+      saveToStorage(STORAGE_KEYS.disabledFeedsSchema, 2);
+    }
+
     // ── One-time v1 cap-bug recovery ──────────────────────────────────
     // Pre-2026-05-01 the source cap was enforced by Array.sort().slice(),
     // which silently auto-disabled every source past alphabetical position

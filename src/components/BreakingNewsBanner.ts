@@ -1,7 +1,8 @@
 import type { BreakingAlert } from '@/services/breaking-news-alerts';
 import { getAlertSettings } from '@/services/breaking-news-alerts';
 import { getSourcePanelId } from '@/config/feeds';
-import { t } from '@/services/i18n';
+import { t, getCurrentLanguage } from '@/services/i18n';
+import { translateText } from '@/services/summarization';
 import { isMobileDevice } from '@/utils';
 
 const MAX_ALERTS = 3;
@@ -238,6 +239,15 @@ export class BreakingNewsBanner {
     const headlineSpan = document.createElement('span');
     headlineSpan.className = 'breaking-alert-headline';
     headlineSpan.textContent = alert.headline;
+
+    // Translate headline to Chinese in real-time when language is zh
+    if (getCurrentLanguage() === 'zh' && alert.headline) {
+      translateText(alert.headline, 'zh').then((translated) => {
+        if (translated && headlineSpan.isConnected) {
+          headlineSpan.textContent = translated;
+        }
+      }).catch(() => { /* keep original */ });
+    }
 
     const metaSpan = document.createElement('span');
     metaSpan.className = 'breaking-alert-meta';

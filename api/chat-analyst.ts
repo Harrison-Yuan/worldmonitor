@@ -45,6 +45,7 @@ interface ChatAnalystRequestBody {
   query?: unknown;
   domainFocus?: unknown;
   geoContext?: unknown;
+  lang?: unknown;
 }
 
 function json(body: unknown, status: number, cors: Record<string, string>): Response {
@@ -198,8 +199,11 @@ export default async function handler(req: Request): Promise<Response> {
     const prevUserTurn = history.filter((m) => m.role === 'user').slice(-1)[0]?.content ?? '';
     const retrievalQuery = prevUserTurn ? `${query} ${prevUserTurn}` : query;
 
+    const rawLang = typeof body.lang === 'string' ? body.lang.trim().toLowerCase() : '';
+    const lang = rawLang === 'zh' ? 'zh' : undefined;
+
     const context = await assembleAnalystContext(geoContext, domainFocus, retrievalQuery);
-    const systemPrompt = buildAnalystSystemPrompt(context, domainFocus);
+    const systemPrompt = buildAnalystSystemPrompt(context, domainFocus, lang);
 
     const messages = [
       { role: 'system', content: systemPrompt },

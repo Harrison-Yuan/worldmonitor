@@ -318,10 +318,10 @@ canvas,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 0 20px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  height: 40px;
+  height: 44px;
   flex-shrink: 0;
   /* Lift the header's stacking context above the content grid so its
      dropdown panels (Intelligence Findings, Pentagon Pizza, etc.) are not
@@ -1420,11 +1420,14 @@ canvas,
   max-height: 90vh;
   /* Allow resize up to 90% of viewport */
   border: 1px solid var(--border);
+  border-radius: var(--dashboard-panel-radius);
   background: var(--surface);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+  margin: var(--dashboard-grid-gap) var(--dashboard-grid-gap) 0;
 }
 
 .map-section.hidden {
@@ -1560,15 +1563,16 @@ canvas,
 }
 
 :root {
-  --dashboard-panel-row-min: 200px;
-  --dashboard-panel-row-max: 380px;
-  --dashboard-grid-gap: 4px;
+  --dashboard-panel-row-min: 220px;
+  --dashboard-panel-row-max: 420px;
+  --dashboard-grid-gap: 12px;
+  --dashboard-panel-radius: 10px;
   --dashboard-first-grid-reservation: calc(var(--dashboard-panel-row-min) + var(--dashboard-panel-row-min) + var(--dashboard-grid-gap));
 }
 
 .panels-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   grid-auto-flow: row dense;
   grid-auto-rows: minmax(var(--dashboard-panel-row-min), var(--dashboard-panel-row-max));
   gap: var(--dashboard-grid-gap);
@@ -1589,7 +1593,7 @@ canvas,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 16px 24px;
   font-size: 11px;
   color: var(--text-dim);
   border-top: 1px solid var(--border);
@@ -1663,6 +1667,7 @@ canvas,
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--dashboard-panel-radius);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1670,9 +1675,17 @@ canvas,
   min-height: 200px;
   min-width: 0;
   cursor: grab;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   contain: content;
+}
+
+.panel:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.panel:active {
+  cursor: grabbing;
 }
 
 /* .panel.resized: Custom height set - use grid-row span for height */
@@ -1845,10 +1858,6 @@ body.panel-resize-active iframe {
   }
 }
 
-.panel:active {
-  cursor: grabbing;
-}
-
 .panel.hidden {
   display: none;
 }
@@ -1905,7 +1914,7 @@ body.panel-resize-active iframe {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 8px 14px;
   background: var(--overlay-subtle);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -1947,9 +1956,9 @@ body.panel-resize-active iframe {
 
 .panel-title {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: var(--text);
 }
 
@@ -2471,7 +2480,7 @@ body.panel-resize-active iframe {
 .panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
   min-width: 0;
   user-select: none;
   content-visibility: auto;
@@ -14065,7 +14074,8 @@ a.prediction-link:hover {
 
   .header {
     gap: 8px;
-    padding: 8px 12px;
+    padding: 0 12px;
+    height: 44px;
   }
 
   .header-left {
@@ -14178,8 +14188,8 @@ a.prediction-link:hover {
   .panels-grid {
     display: flex !important;
     flex-direction: column;
-    gap: 8px;
-    padding: 8px;
+    gap: 12px;
+    padding: 12px;
   }
 
   body {
@@ -14193,7 +14203,8 @@ a.prediction-link:hover {
   .panel {
     width: 100% !important;
     min-height: 250px;
-    max-height: min(70vh, 500px);
+    max-height: min(75vh, 520px);
+    border-radius: var(--dashboard-panel-radius);
   }
 
   /*

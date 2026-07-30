@@ -41,11 +41,11 @@ const localeModules = import.meta.glob<TranslationDictionary>(
 const RTL_LANGUAGES = new Set(['ar', 'fa']);
 
 function normalizeLanguage(lng: string): SupportedLanguage {
-  const base = (lng || 'en').split('-')[0]?.toLowerCase() || 'en';
+  const base = (lng || 'zh').split('-')[0]?.toLowerCase() || 'zh';
   if (SUPPORTED_LANGUAGE_SET.has(base as SupportedLanguage)) {
     return base as SupportedLanguage;
   }
-  return 'en';
+  return 'zh';
 }
 
 function applyDocumentDirection(lang: string): void {
@@ -88,7 +88,7 @@ async function ensureLanguageLoaded(lng: string): Promise<SupportedLanguage> {
 }
 
 function notifyLanguageResourcesLoaded(language: SupportedLanguage): void {
-  if (normalizeLanguage(i18next.language || 'en') !== language) return;
+  if (normalizeLanguage(i18next.language || 'zh') !== language) return;
 
   const dispatch = (): void => {
     if (typeof window !== 'undefined') {
@@ -144,7 +144,7 @@ function preloadEnglishTranslation(attempt = 0): void {
 // Initialize i18n
 export async function initI18n(): Promise<void> {
   if (i18next.isInitialized) {
-    const currentLanguage = normalizeLanguage(i18next.language || 'en');
+    const currentLanguage = normalizeLanguage(i18next.language || 'zh');
     await ensureLanguageLoaded(currentLanguage);
     applyDocumentDirection(i18next.language || currentLanguage);
     return;
@@ -189,7 +189,7 @@ export async function initI18n(): Promise<void> {
       },
       supportedLngs: [...SUPPORTED_LANGUAGES],
       nonExplicitSupportedLngs: true,
-      fallbackLng: 'en',
+      fallbackLng: 'zh',
       debug: import.meta.env.DEV,
       interpolation: {
         escapeValue: false, // not needed for these simple strings
@@ -200,7 +200,7 @@ export async function initI18n(): Promise<void> {
       },
     });
 
-  const detectedLanguage = normalizeLanguage(i18next.language || 'en');
+  const detectedLanguage = normalizeLanguage(i18next.language || 'zh');
   if (detectedLanguage === 'en') {
     preloadEnglishTranslation();
   } else {
@@ -247,7 +247,7 @@ export async function changeLanguage(lng: string): Promise<void> {
 
 // Helper to get current language (normalized to short code)
 export function getCurrentLanguage(): string {
-  const lang = i18next.language || 'en';
+  const lang = i18next.language || 'zh';
   return lang.split('-')[0]!;
 }
 

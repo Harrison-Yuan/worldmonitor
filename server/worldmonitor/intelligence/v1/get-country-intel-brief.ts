@@ -196,7 +196,7 @@ Rules:
 - If no infrastructure context is provided, use named economic sectors or companies instead.
 - Be specific. Avoid generic phrases like "supply chain disruption risk".
 - If "Brief source articles" are provided, cite supporting claims with bracket markers like [1] or [2]. Do not invent source numbers or URLs.
-- No speculation beyond what data supports.${lang === 'fr' ? '\n- IMPORTANT: You MUST respond ENTIRELY in French language.' : ''}`;
+- No speculation beyond what data supports.${lang === 'fr' ? '\n- IMPORTANT: You MUST respond ENTIRELY in French language.' : lang === 'zh' ? '\n- IMPORTANT: You MUST respond ENTIRELY in Chinese language (Simplified Chinese).' : ''}`;
 
   let result: GetCountryIntelBriefResponse | null = null;
   try {

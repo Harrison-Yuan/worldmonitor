@@ -91,15 +91,23 @@ export function buildDeductionPrompt(input: {
   geoContext: string;
   predictionContext?: string;
   now?: Date;
+  /** Optional language override (e.g. 'zh' for Chinese). */
+  lang?: string;
 }): { mode: DeductionMode; systemPrompt: string; userPrompt: string } {
   const now = input.now ?? new Date();
   const today = now.toISOString().slice(0, 10);
   const mode = inferDeductionMode(input.query);
   const { primaryContext, recentNews } = splitDeductionContext(input.geoContext);
   const evidence = buildSharedEvidencePrompt(primaryContext, recentNews);
+  const lang = input.lang;
 
   const predictionBlock = input.predictionContext
     ? `\n\n${input.predictionContext}`
+    : '';
+
+  // Language instruction for non-English output
+  const langInstruction = lang === 'zh'
+    ? '\n- IMPORTANT: You MUST respond ENTIRELY in Chinese language (Simplified Chinese).'
     : '';
 
   // Issue #3724 defense-in-depth: appended to every deduction system prompt.
@@ -120,7 +128,7 @@ Return plain text in exactly 2 or 3 sentences.
 - Sentence 1: core assessment and rough likelihood.
 - Sentence 2: primary drivers or constraints.
 - Optional sentence 3: the most important trigger to watch next.
-No markdown, no bullets, no headings, no preamble.${securityRule}`,
+No markdown, no bullets, no headings, no preamble.${langInstruction}${securityRule}`,
       userPrompt: `Question:\n${input.query}\n\n${evidence}${predictionBlock}`,
     };
   }
@@ -151,7 +159,7 @@ Formatting rules:
 - Use short bullets under each section where useful.
 - In "Alternative paths", include 2 alternatives with rough likelihood bands.
 - In "Confidence", state High, Medium, or Low and explain why.
-- Ground claims in the supplied evidence by naming sources, dates, locations, or signal types when possible.${securityRule}`,
+- Ground claims in the supplied evidence by naming sources, dates, locations, or signal types when possible.${langInstruction}${securityRule}`,
     userPrompt: `Question:\n${input.query}\n\n${evidence}${predictionBlock}`,
   };
 }

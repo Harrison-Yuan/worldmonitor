@@ -1,7 +1,5 @@
 import { loadFromStorage, saveToStorage } from '@/utils';
 import { clearPanelColSpanEntry, clearPanelSpanEntry } from '@/utils/panel-storage';
-import { getAuthState } from '@/services/auth-state';
-import { isEntitled } from '@/services/entitlements';
 import {
   clearLegacyKeyStorage,
   migrateLegacyKeysToHttpOnlySession,
@@ -221,12 +219,8 @@ export function isProWidgetEnabled(): boolean {
 }
 
 export function isProUser(): boolean {
-  return (
-    isWidgetFeatureEnabled() ||
-    isProWidgetEnabled() ||
-    getAuthState().user?.role === 'pro' ||
-    isEntitled()
-  );
+  // Premium gating is disabled — treat all users as Pro.
+  return true;
 }
 
 export function getProWidgetKey(): string {

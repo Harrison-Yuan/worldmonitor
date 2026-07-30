@@ -121,7 +121,15 @@ export async function deductSituation(
     const predictionHash = predictionContext ? (await sha256Hex(predictionContext)).slice(0, 8) : '';
     const cacheKey = `deduct:situation:v2:${queryHash.slice(0, 16)}${frameworkHash ? ':fw' + frameworkHash : ''}${predictionHash ? ':pm' + predictionHash : ''}`;
 
-    const { mode, systemPrompt, userPrompt } = buildDeductionPrompt({ query, geoContext, predictionContext });
+    // Extract language preference from the request URL
+    let lang: string | undefined;
+    try {
+      const url = new URL(ctx.request.url);
+      const rawLang = (url.searchParams.get('lang') || '').toLowerCase();
+      if (rawLang === 'zh') lang = 'zh';
+    } catch { /* ignore */ }
+
+    const { mode, systemPrompt, userPrompt } = buildDeductionPrompt({ query, geoContext, predictionContext, lang });
 
     const cached = await cachedFetchJson<{ analysis: string; model: string; provider: string }>(
         cacheKey,
