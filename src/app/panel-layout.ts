@@ -162,34 +162,43 @@ const DASHBOARD_REFERENCE_LINKS = [
 // lift these defaults into one shared table imported by both the `Panel`
 // constructor and this map, removing the duplication entirely (see #4490).
 export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
-  cii: { rowSpan: 2 },
+  // ── HIGH-VALUE: core entrepreneur intelligence ──
+  // Executive summaries & AI analysis — widest for readability
+  'latest-brief': { colSpan: 2 },
+  forecast: { colSpan: 2 },
+  insights: { colSpan: 2 },
   'chat-analyst': { rowSpan: 2 },
+  'strategic-risk': { colSpan: 2 },
+  'cross-source-signals': { colSpan: 2 },
+
+  // Geopolitical & intelligence feeds — must-scan
+  politics: { colSpan: 2 },
+  intel: { colSpan: 2 },
+  'gdelt-intel': { rowSpan: 2 },
+  cii: { rowSpan: 2 },
+  'threat-timeline': { rowSpan: 2 },
+
+  // Markets & macro — wide for data tables / charts
+  markets: { colSpan: 2 },
+  commodities: { colSpan: 2 },
+  economic: { colSpan: 2, rowSpan: 2 },
+  'macro-signals': { colSpan: 2 },
+  'energy-complex': { rowSpan: 2 },
+  'oil-inventories': { rowSpan: 2 },
+
+  // Trade & supply chain — entrepreneur-critical
+  'trade-policy': { rowSpan: 2, className: 'panel-wide' },
+  'supply-chain': { rowSpan: 2 },
+  'global-procurement': { rowSpan: 2 },
   'china-corridors': { rowSpan: 2, className: 'panel-wide' },
   'china-activity-nowcast': { rowSpan: 2, className: 'panel-wide' },
-  'consumer-prices': { rowSpan: 2 },
-  displacement: { rowSpan: 2 },
-  economic: { rowSpan: 2 },
-  'global-procurement': { rowSpan: 2 },
-  'energy-complex': { rowSpan: 2 },
-  'energy-crisis': { rowSpan: 2 },
-  'energy-disruptions': { rowSpan: 2 },
-  'fuel-shortages': { rowSpan: 2 },
-  'gdelt-intel': { rowSpan: 2 },
-  'internet-disruptions': { rowSpan: 2 },
-  'live-news': { className: 'panel-wide' },
-  'live-webcams': { className: 'panel-wide' },
-  'oil-inventories': { rowSpan: 2 },
-  'pipeline-status': { rowSpan: 2 },
-  'sanctions-pressure': { rowSpan: 2 },
-  'security-advisories': { rowSpan: 2 },
-  'storage-facility-map': { rowSpan: 2 },
+
+  // Strategic posture
   'strategic-posture': { rowSpan: 2 },
-  'supply-chain': { rowSpan: 2 },
-  'telegram-intel': { rowSpan: 2 },
-  'threat-timeline': { rowSpan: 2 },
-  'trade-policy': { rowSpan: 2 },
-  'ucdp-events': { rowSpan: 2 },
-  'windy-webcams': { className: 'panel-wide' },
+
+  // ── MEDIUM VALUE: keep as regular panels ──
+  // 'live-news' stays 2×2 as a visual anchor
+  'live-news': { className: 'panel-wide' },
 };
 
 const DEFERRED_DYNAMIC_PANEL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
