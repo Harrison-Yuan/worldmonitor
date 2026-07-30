@@ -116,15 +116,15 @@ function shouldDefaultToLightMapTheme(): boolean {
 }
 
 export function getMapTheme(provider: MapProvider): string {
-  const stored = readStorageValue(THEME_STORAGE_PREFIX + provider);
-  const options = MAP_THEME_OPTIONS[provider];
-  if (stored && options.some(o => o.value === stored)) return stored;
-  // When no stored preference, auto-detect from app-level theme
+  // App-level light theme overrides any stored map theme preference
   if (shouldDefaultToLightMapTheme()) {
     if (provider === 'pmtiles' || provider === 'auto') return 'light';
     if (provider === 'openfreemap') return 'positron';
     if (provider === 'carto') return 'positron';
   }
+  const stored = readStorageValue(THEME_STORAGE_PREFIX + provider);
+  const options = MAP_THEME_OPTIONS[provider];
+  if (stored && options.some(o => o.value === stored)) return stored;
   return DEFAULT_THEME[provider];
 }
 
