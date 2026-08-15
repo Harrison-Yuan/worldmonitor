@@ -1,0 +1,199 @@
+{
+  "schema_version": "1.0",
+  "description": "WorldMonitor 信号与阈值定义注册表 —— 每种可观测信号、判定阈值、来源与下游集成。结构见 schema/signal.json。对应 src/services/signal-aggregator.ts 的 SignalType。",
+  "signals": [
+    {
+      "id": "internet-outage",
+      "type": "internet_outage",
+      "name": "互联网断网",
+      "description": "某地区互联网连接中断或异常(来自 Cloudflare Radar)。",
+      "sources": ["cloudflare-radar"],
+      "thresholds": [
+        { "level": "high", "condition": "大规模断网事件", "effect": "进入信号聚合;与抗议/冲突聚合时触发严重度提升" }
+      ],
+      "integration": "作为收敛信号与抗议、冲突等事件做地理关联;参与抗议严重度提升。"
+    },
+    {
+      "id": "military-flight",
+      "type": "military_flight",
+      "name": "军事飞行",
+      "description": "ADS-B 上报的军事/军用飞行活动。",
+      "sources": ["adsb"],
+      "thresholds": [
+        { "level": "medium", "condition": "侦测到军事航迹", "effect": "按国家聚类计入 CountrySignalCluster" }
+      ],
+      "integration": "信号聚合器按国家/地区聚类;与断网/抗议等信号收敛时提示事件。"
+    },
+    {
+      "id": "military-vessel",
+      "type": "military_vessel",
+      "name": "海军舰船",
+      "description": "AIS 上报的海军舰船活动。",
+      "sources": ["ais"],
+      "thresholds": [
+        { "level": "medium", "condition": "侦测到海军航迹", "effect": "按国家聚类计入 CountrySignalCluster" }
+      ],
+      "integration": "信号聚合器按国家/地区聚类。"
+    },
+    {
+      "id": "protest",
+      "type": "protest",
+      "name": "抗议/社会动荡",
+      "description": "抗议、骚乱、罢工、示威事件,ACLED 与 GDELT 双源交叉验证,0.1° 网格 Haversine 同日去重,ACLED 优先。",
+      "sources": ["acled", "gdelt"],
+      "thresholds": [
+        { "level": "high", "condition": "有死亡者或骚乱/冲突关键词", "effect": "严重度提升" },
+        { "level": "medium", "condition": "标准抗议/示威", "effect": "标准信号" },
+        { "level": "low", "condition": "默认", "effect": "低严重度" },
+        { "level": "validated", "condition": "GDELT mention >=30", "effect": "标记为 validated" }
+      ],
+      "integration": "抗议评分是制度感知的:民主国家用对数缩放(常规抗议不触发不稳定),威权国家用线性计分(每次抗议都有意义);死亡者与并发断网施加严重度提升。"
+    },
+    {
+      "id": "ais-disruption",
+      "type": "ais_disruption",
+      "name": "AIS 中断",
+      "description": "AIS 信号中断/异常区域。",
+      "sources": ["ais"],
+      "thresholds": [
+        { "level": "medium", "condition": "检测到 AIS 覆盖异常", "effect": "按区域聚类" }
+      ],
+      "integration": "信号聚合器按国家聚类;可能与军事活动相关。"
+    },
+    {
+      "id": "satellite-fire",
+      "type": "satellite_fire",
+      "name": "卫星火点",
+      "description": "NASA FIRMS VIIRS 热异常/野火检测。",
+      "sources": ["nasa-firms"],
+      "thresholds": [
+        { "level": "low", "condition": "检测到热异常", "effect": "按国家聚类" }
+      ],
+      "integration": "信号聚合器按国家聚类;火灾靠近管线等基础设施触发基础设施级联告警。"
+    },
+    {
+      "id": "radiation-anomaly",
+      "type": "radiation_anomaly",
+      "name": "辐射异常",
+      "description": "明显高于本地基线的辐射读数。",
+      "sources": ["nuclear-facilities"],
+      "thresholds": [
+        { "level": "high", "condition": "读数显著高于本地基线", "effect": "按国家聚类" }
+      ],
+      "integration": "信号聚合器按国家聚类;核设施基线驱动。"
+    },
+    {
+      "id": "temporal-anomaly",
+      "type": "temporal_anomaly",
+      "name": "时间异常",
+      "description": "时间序列异常检测。",
+      "sources": [],
+      "thresholds": [
+        { "level": "medium", "condition": "检测到时间模式偏离", "effect": "按国家聚类" }
+      ],
+      "integration": "信号聚合器按国家聚类。"
+    },
+    {
+      "id": "sanctions-pressure",
+      "type": "sanctions_pressure",
+      "name": "制裁压力",
+      "description": "制裁制度相关指标的基线偏离告警。",
+      "sources": ["sanctions"],
+      "thresholds": [
+        { "level": "medium", "condition": "制裁相关指标偏离基线", "effect": "按国家聚类" }
+      ],
+      "integration": "信号聚合器按国家聚类。"
+    },
+    {
+      "id": "active-strike",
+      "type": "active_strike",
+      "name": "活跃打击",
+      "description": "伊朗攻击/军事冲突事件(LiveUAMap)。",
+      "sources": ["liveuamap"],
+      "thresholds": [
+        { "level": "high", "condition": "攻击/打击事件", "effect": "计入 active_strike;带 strikeCount 与 highSeverityStrikeCount" }
+      ],
+      "integration": "信号聚合器按国家聚类;攻击计数进入聚合严重度。"
+    },
+    {
+      "id": "gps-jamming",
+      "type": "gps_jamming",
+      "name": "GPS 干扰/欺骗",
+      "description": "从 ADS-B 应答机异常分析出的 GPS 干扰,按 H3 分辨率 4 网格。",
+      "sources": ["gpsjam"],
+      "thresholds": [
+        { "level": "low", "condition": "0-2% 异常机占比", "effect": "隐藏" },
+        { "level": "medium", "condition": "2-10% 异常机占比", "effect": "琥珀色" },
+        { "level": "high", "condition": ">10% 异常机占比", "effect": "红色" }
+      ],
+      "integration": "CII 安全组件:min(35, highCount*5 + mediumCount*2);12 个命名冲突区域包围盒标记。"
+    },
+    {
+      "id": "climate-anomaly",
+      "type": "climate_anomaly",
+      "name": "气候异常",
+      "description": "15 个易发区的温度/降水异常,30 天 ERA5 基线对比。",
+      "sources": ["open-meteo-era5"],
+      "thresholds": [
+        { "level": "extreme", "condition": "温度 >5°C 或降水 >80mm/天高于基线", "effect": "放大受影响国家 CII" },
+        { "level": "moderate", "condition": "温度 >3°C 或降水 >40mm/天高于基线", "effect": "进入信号聚合" },
+        { "level": "normal", "condition": "预期范围内", "effect": "无" }
+      ],
+      "integration": "进入信号聚合器;气候压力是公认冲突加速剂,放大 CII。"
+    },
+    {
+      "id": "airport-delay",
+      "type": "airport_delay",
+      "name": "机场延误",
+      "description": "115 个机场的延误与 NOTAM 关闭。",
+      "sources": ["airport-monitoring"],
+      "thresholds": [
+        { "level": "minor", "condition": "平均延误 >=15min 或 >=15% 延误航班", "effect": "minor 告警" },
+        { "level": "moderate", "condition": ">=30min/30%", "effect": "moderate 告警" },
+        { "level": "major", "condition": ">=45min/45%", "effect": "major 告警" },
+        { "level": "severe", "condition": ">=60min/60%", "effect": "severe 告警" },
+        { "level": "critical", "condition": "取消率 >=80% 且航班 >=10", "effect": "closure;覆盖既有延误告警" }
+      ],
+      "integration": "机场/空域态势面板;NOTAM 关闭检测覆盖既有延误告警(severe/closure 分类)。"
+    },
+    {
+      "id": "displacement",
+      "type": "displacement",
+      "name": "流离失所",
+      "description": "难民与境内流离失所者人口级数据。",
+      "sources": ["un-ocha-hapi"],
+      "thresholds": [
+        { "level": "critical", "condition": ">100 万流离失所", "effect": "红色危机标记" },
+        { "level": "high", "condition": ">50 万流离失所", "effect": "橙色危机标记" }
+      ],
+      "integration": "流出进入 CII 组件;高流离失所是滞后不稳定性指标。"
+    },
+    {
+      "id": "advisory",
+      "type": "advisory",
+      "name": "旅行建议等级",
+      "description": "政府旅行建议作为专家风险评估(国家情报机构)。",
+      "sources": ["security-advisories"],
+      "thresholds": [
+        { "level": "critical", "condition": "Do-Not-Travel(4)", "effect": "CII +15 且地板 60" },
+        { "level": "high", "condition": "Reconsider Travel(3)", "effect": "CII +10 且地板 50" },
+        { "level": "medium", "condition": "Exercise Caution(2)", "effect": "CII +5" },
+        { "level": "normal", "condition": "Normal(1)", "effect": "无" },
+        { "level": "low", "condition": "Info(0)", "effect": "无" }
+      ],
+      "integration": "CII 分数提升与地板;advisoryProvenance 区分 live/fallback/absent。"
+    }
+  ],
+  "aggregation": {
+    "description": "信号聚合与收敛检测流程(correlation-engine)",
+    "pipeline": [
+      "collectSignals(ctx) —— 各领域 adapter 收集信号",
+      "clusterSignals(signals, adapter) —— 按国家/地区空间聚类",
+      "scoreClusters(clusters, adapter) —— 打分",
+      "score >= adapter.threshold 过滤",
+      "applyTrends(filtered, adapter) —— 趋势方向判定",
+      "LLM 评估(score >= 60,30 分钟缓存,并发 <=3)"
+    ],
+    "cap": "SIGNAL_AGGREGATOR_MAX_SIGNALS = 1000"
+  }
+}

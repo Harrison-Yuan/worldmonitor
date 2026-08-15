@@ -1,0 +1,11 @@
+# 部署后的必设 secrets 示例 —— 复制为 .dev.vars(本地)或 wrangler secret put(线上)
+# 不要提交真实值。云端设置:npx wrangler secret put AUTH_TOKEN / WM_API_KEY
+
+# 生产必设:外部访问令牌(请求头 Authorization: Bearer <token> 或 X-API-Token)
+AUTH_TOKEN=change-me
+
+# 可选:WorldMonitor Pro 密钥(query_data 出站数据查询用)
+# WM_API_KEY=
+
+# 可选:数据查询 API 基址(默认 https://worldmonitor.app)
+# WM_API_BASE=https://worldmonitor.app

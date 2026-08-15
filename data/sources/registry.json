@@ -1,0 +1,770 @@
+{
+  "schema_version": "1.0",
+  "description": "WorldMonitor 数据源注册表 —— 权威数据源目录、采集方式、新鲜度、角色与坑。结构见 schema/source.json。供 MCP tools 与 LLM 消费。",
+  "domains": [
+    {
+      "id": "geopolitical",
+      "name": "地缘政治",
+      "sources": [
+        {
+          "id": "ucdp",
+          "name": "UCDP GED",
+          "provider": "Uppsala Conflict Data Program",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "全球武装冲突事件数据库。",
+          "freshness": "年度(滞后发布)",
+          "role": "冲突事件权威源;当 ACLED 不可用时作为 CII 冲突评分的回退源",
+          "fallback": [],
+          "caveats": [
+            "GED 是滞后年度数据,单独使用可能在 CII 2 年窗口内无事件,health 信号报 COVERAGE_PARTIAL",
+            "与 ACLED 的事件去重中作为低频回退方"
+          ]
+        },
+        {
+          "id": "acled",
+          "name": "ACLED",
+          "provider": "Armed Conflict Location & Event Data",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "武装冲突与抗议事件数据,30 天窗口,带行为者归属与死亡数。",
+          "freshness": "实时,Redis 10 分钟 TTL",
+          "role": "实时冲突源 + 抗议双源之一;CII 冲突组件的首要输入",
+          "fallback": ["ucdp"],
+          "caveats": [
+            "需 ACLED_EMAIL/PASSWORD(OAuth 自动刷新)或静态 ACLED_ACCESS_TOKEN",
+            "无认证时降级为空结果,导致 CII 冲突评分退回 UCDP",
+            "与 GDELT 抗议事件 Haversine 去重时 ACLED 优先(编辑置信度更高)"
+          ]
+        },
+        {
+          "id": "gdelt",
+          "name": "GDELT",
+          "provider": "GDELT Project",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "全球事件、语言与语气数据库;7 天地理事件流,过滤抗议关键词。",
+          "freshness": "实时",
+          "role": "抗议双源之二;社会动荡事件的交叉验证",
+          "fallback": [],
+          "caveats": [
+            "mention 数 >=5 才纳入,>=30 标记为 validated",
+            "与 ACLED 同 0.1° 网格(~10km)同日去重,ACLED 优先",
+            "新鲜度跟踪中标记为 requiredForRisk"
+          ]
+        },
+        {
+          "id": "gpsjam",
+          "name": "gpsjam.org",
+          "provider": "gpsjam.org (聚合 ADS-B Exchange)",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "GPS 干扰/欺骗检测:分析上报 GPS 异常的 ADS-B 应答机数据,聚合为 H3 分辨率 4 六边形网格。",
+          "freshness": "实时",
+          "role": "电子战态势源;CII 安全组件输入(最高 +35 分)",
+          "fallback": [],
+          "caveats": [
+            "飞机数 <3 的单元被排除(统计噪声)",
+            "干扰分级:0-2% 低(隐藏)、2-10% 中(琥珀)、>10% 高(红)",
+            "CII 贡献:min(35, highCount*5 + mediumCount*2)"
+          ]
+        },
+        {
+          "id": "liveuamap",
+          "name": "LiveUAMap",
+          "provider": "Live Universal Awareness Map",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "伊朗冲突事件:地理编码的攻击、打击与军事事件,带严重度分类。",
+          "freshness": "实时",
+          "role": "active_strike 信号源",
+          "fallback": []
+        },
+        {
+          "id": "sanctions",
+          "name": "制裁制度",
+          "provider": "多来源",
+          "domain": "geopolitical",
+          "data_type": "api",
+          "description": "制裁制度数据,驱动 sanctions_pressure 基线偏离告警。",
+          "freshness": "按源",
+          "role": "sanctions_pressure 信号源",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "military",
+      "name": "军事与战略",
+      "sources": [
+        {
+          "id": "adsb",
+          "name": "ADS-B 军机跟踪",
+          "provider": "OpenSky Network / Wingbits",
+          "domain": "military",
+          "data_type": "adsb",
+          "description": "实时军机航迹(高度、地速、航向、地面状态)。",
+          "freshness": "实时",
+          "role": "military_flight 信号源;GPS 干扰分析的原始数据",
+          "fallback": ["wingbits", "opensky"],
+          "caveats": [
+            "仅反映应答机主动上报的飞机,非独立观测"
+          ]
+        },
+        {
+          "id": "ais",
+          "name": "AIS 舰船监视",
+          "provider": "AIS 网络",
+          "domain": "military",
+          "data_type": "ais",
+          "description": "海军舰船位置与航迹;AIS 中断亦作为信号。",
+          "freshness": "实时",
+          "role": "military_vessel 与 ais_disruption 信号源",
+          "fallback": []
+        },
+        {
+          "id": "celestrak",
+          "name": "CelesTrak TLE",
+          "provider": "CelesTrak",
+          "domain": "military",
+          "data_type": "tle",
+          "description": "约 80-120 颗情报相关卫星的 TLE 轨道数据,客户端 SGP4 实时推演。",
+          "freshness": "TLE 更新周期",
+          "role": "轨道监视层(仅 Globe)",
+          "fallback": []
+        },
+        {
+          "id": "military-bases",
+          "name": "军事基地目录",
+          "provider": "静态数据集",
+          "domain": "military",
+          "data_type": "table",
+          "description": "9 个运营者的 226 个军事基地。",
+          "freshness": "静态",
+          "role": "地图基础层",
+          "fallback": []
+        },
+        {
+          "id": "nuclear-facilities",
+          "name": "核设施与伽马辐照器",
+          "provider": "静态数据集",
+          "domain": "military",
+          "data_type": "table",
+          "description": "核设施与伽马辐照器位置(radiation_anomaly 基线)。",
+          "freshness": "静态",
+          "role": "radiation_anomaly 信号基线",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "基础设施",
+      "sources": [
+        {
+          "id": "submarine-cables",
+          "name": "海底光缆",
+          "provider": "Submarine Cable Map + NGA 航行通告",
+          "domain": "infrastructure",
+          "data_type": "api",
+          "description": "海底光缆登陆点、健康通告与维修船跟踪。",
+          "freshness": "按源",
+          "role": "基础设施层",
+          "fallback": []
+        },
+        {
+          "id": "cloudflare-radar",
+          "name": "Cloudflare Radar",
+          "provider": "Cloudflare",
+          "domain": "infrastructure",
+          "data_type": "api",
+          "description": "互联网断网与流量异常。",
+          "freshness": "实时",
+          "role": "internet_outage 信号源",
+          "fallback": []
+        },
+        {
+          "id": "ai-datacenters",
+          "name": "AI 数据中心",
+          "provider": "Epoch AI",
+          "domain": "infrastructure",
+          "data_type": "table",
+          "description": "313 个 AI 数据中心集群。",
+          "freshness": "静态",
+          "role": "地图层",
+          "fallback": []
+        },
+        {
+          "id": "ports",
+          "name": "战略港口",
+          "provider": "静态数据集",
+          "domain": "infrastructure",
+          "data_type": "table",
+          "description": "6 类 62 个战略港口(集装箱/油LNG/咽喉/海军/混合/散货),带吞吐量排名与关键度。",
+          "freshness": "静态",
+          "role": "基础设施层;基础设施级联模型中关键度:油LNG 0.9、集装箱 0.7、海军 0.4",
+          "fallback": []
+        },
+        {
+          "id": "nasa-firms",
+          "name": "NASA FIRMS",
+          "provider": "NASA (VIIRS)",
+          "domain": "infrastructure",
+          "data_type": "api",
+          "description": "近实时热异常/野火检测。",
+          "freshness": "近实时",
+          "role": "satellite_fire 信号源",
+          "fallback": []
+        },
+        {
+          "id": "trade-routes",
+          "name": "贸易路线",
+          "provider": "静态数据集",
+          "domain": "infrastructure",
+          "data_type": "table",
+          "description": "19 条全球贸易路线(集装箱、能源、散货),多段弧线穿过战略咽喉点。",
+          "freshness": "静态",
+          "role": "地图层",
+          "fallback": []
+        },
+        {
+          "id": "pipelines",
+          "name": "油气管道",
+          "provider": "静态数据集",
+          "domain": "infrastructure",
+          "data_type": "table",
+          "description": "全球油气管道网络。",
+          "freshness": "静态",
+          "role": "地图层",
+          "fallback": []
+        },
+        {
+          "id": "minerals",
+          "name": "关键矿产",
+          "provider": "静态数据集",
+          "domain": "infrastructure",
+          "data_type": "table",
+          "description": "关键矿产矿床分布。",
+          "freshness": "静态",
+          "role": "地图层",
+          "fallback": []
+        },
+        {
+          "id": "airport-monitoring",
+          "name": "机场延误与关闭监控",
+          "provider": "FAA ASWS + AviationStack + ICAO NOTAM",
+          "domain": "infrastructure",
+          "data_type": "api",
+          "description": "5 大区域 115 个机场的延误、地面停运、NOTAM 关闭检测。",
+          "freshness": "30 分钟 Redis 缓存",
+          "role": "机场/空域态势;NOTAM 关闭覆盖既有延误告警(severe/closure)",
+          "fallback": [
+            "FAA ASWS(14 US hub)",
+            "AviationStack(56 国际机场,最近 100 航班计算取消率/平均延误)",
+            "ICAO NOTAM API(46 MENA 机场,Q-code + 关键词扫描)"
+          ],
+          "caveats": [
+            "延误分级:>=15min/15% minor、>=30min/30% moderate、>=45min/45% major、>=60min/60% severe",
+            "取消率 >=80% 且航班 >=10 判定 closure",
+            "无 AviationStack key 时生成概率模拟延迟(仅演示,非真实数据)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market",
+      "name": "市场与加密",
+      "sources": [
+        {
+          "id": "yahoo-finance",
+          "name": "Yahoo Finance",
+          "provider": "Yahoo",
+          "domain": "market",
+          "data_type": "api",
+          "description": "股票/商品/加密货币报价;GCC 指数与货币、宏观指标。",
+          "freshness": "8 分钟 Redis 缓存,60 秒轮询",
+          "role": "市场报价主源",
+          "fallback": [],
+          "caveats": [
+            "请求必须错峰(150ms 间隔批量)",
+            "请求中必须带 User-Agent"
+          ]
+        },
+        {
+          "id": "coingecko",
+          "name": "CoinGecko",
+          "provider": "CoinGecko",
+          "domain": "market",
+          "data_type": "api",
+          "description": "加密货币实时价格(BTC、ETH、SOL、XRP 等)。",
+          "freshness": "实时",
+          "role": "加密价格源",
+          "fallback": []
+        },
+        {
+          "id": "polymarket",
+          "name": "Polymarket",
+          "provider": "Polymarket (Gamma API)",
+          "domain": "market",
+          "data_type": "api",
+          "description": "地缘政治预测市场合约,作为领先指标:概率显著移动早于新闻 = 早期预警信号。",
+          "freshness": "5 分钟缓存",
+          "role": "预测市场信号;40+ 国家 tag 变体映射",
+          "fallback": [
+            "bootstrap 水合(零网络,页面内嵌,<20min 新鲜)",
+            "Sebuf RPC(读 Redis seed 缓存)",
+            "浏览器直连 Polymarket(绕过 Cloudflare JA3)",
+            "Tauri 原生 TLS(reqwest,桌面端)"
+          ],
+          "caveats": [
+            "Cloudflare JA3 指纹封堵服务端请求,需 3 层回退",
+            "过滤体育/娱乐(100+ 排除关键词)",
+            "要求价格与 50% 显著背离或成交量 >$50K 以抑制噪声",
+            "按 24h 成交量排名"
+          ]
+        },
+        {
+          "id": "btc-etf-flows",
+          "name": "BTC 现货 ETF 流量",
+          "provider": "多来源",
+          "domain": "market",
+          "data_type": "api",
+          "description": "IBIT、FBTC、GBTC 等 8+ ETF 的资金流跟踪。",
+          "freshness": "按源",
+          "role": "市场情绪指标",
+          "fallback": []
+        },
+        {
+          "id": "stablecoin-peg",
+          "name": "稳定币锚定监控",
+          "provider": "多来源",
+          "domain": "market",
+          "data_type": "api",
+          "description": "USDT、USDC、DAI、FDUSD、USDe 锚定健康度。",
+          "freshness": "按源",
+          "role": "市场压力指标",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "cyber",
+      "name": "网络威胁",
+      "sources": [
+        {
+          "id": "feodo",
+          "name": "Feodo Tracker",
+          "provider": "abuse.ch",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "僵尸网络 C2 服务器 IOC。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层,c2_server IOC",
+          "fallback": []
+        },
+        {
+          "id": "urlhaus",
+          "name": "URLhaus",
+          "provider": "abuse.ch",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "恶意软件分发 URL。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层,malware_host IOC",
+          "fallback": []
+        },
+        {
+          "id": "c2intelfeeds",
+          "name": "C2IntelFeeds",
+          "provider": "社区源",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "社区众包 C2 指标。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层,c2_server IOC",
+          "fallback": []
+        },
+        {
+          "id": "alienvault-otx",
+          "name": "AlienVault OTX",
+          "provider": "AlienVault",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "开放威胁交换 pulse IOC。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层,混合 IOC",
+          "fallback": []
+        },
+        {
+          "id": "abuseipdb",
+          "name": "AbuseIPDB",
+          "provider": "AbuseIPDB",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "众包恶意 IP 报告。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层,恶意 IP",
+          "fallback": []
+        },
+        {
+          "id": "ransomware-live",
+          "name": "Ransomware.live",
+          "provider": "Ransomware.live",
+          "domain": "cyber",
+          "data_type": "api",
+          "description": "活跃勒索软件团伙 feed。",
+          "freshness": "10 分钟缓存,14 天滚动窗口",
+          "role": "网络威胁层",
+          "fallback": []
+        }
+      ],
+      "notes": [
+        "所有 IP 型 IOC 用 ipinfo.io 地理富化,freeipapi.com 回退,结果 Redis 缓存 24 小时",
+        "富化并发 16 路,12 秒超时,单轮最多 250 IP",
+        "显示上限 500 IOC 以保渲染性能"
+      ]
+    },
+    {
+      "id": "disaster",
+      "name": "自然灾害",
+      "sources": [
+        {
+          "id": "usgs",
+          "name": "USGS 地震",
+          "provider": "US Geological Survey",
+          "domain": "disaster",
+          "data_type": "api",
+          "description": "全球 M4.5+ 地震。",
+          "freshness": "5 分钟",
+          "role": "地震权威源(EONET 地震被排除,USGS 更高质量)",
+          "fallback": [],
+          "caveats": [
+            "三源(USGS/GDACS/EONET)在 0.1° 网格上合并去重"
+          ]
+        },
+        {
+          "id": "gdacs",
+          "name": "GDACS",
+          "provider": "UN GDACS",
+          "domain": "disaster",
+          "data_type": "api",
+          "description": "联合国协调的灾害告警:地震、洪水、气旋、火山、野火、干旱。",
+          "freshness": "实时",
+          "role": "灾害告警源",
+          "fallback": [],
+          "caveats": [
+            "绿级(Green)低严重度被过滤,只保留红(致命)/橙(高)",
+            "带红/橙告警级别颜色编码"
+          ]
+        },
+        {
+          "id": "eonet",
+          "name": "NASA EONET",
+          "provider": "NASA",
+          "domain": "disaster",
+          "data_type": "api",
+          "description": "地球观测事件,13 类自然灾害(30 天开放事件)。",
+          "freshness": "实时",
+          "role": "灾害补充源",
+          "fallback": [],
+          "caveats": [
+            "野火事件过滤到 48 小时内防陈旧",
+            "地震事件排除(USGS 更优)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "climate",
+      "name": "气候",
+      "sources": [
+        {
+          "id": "open-meteo-era5",
+          "name": "Open-Meteo ERA5",
+          "provider": "Open-Meteo (ERA5 再分析)",
+          "domain": "climate",
+          "data_type": "api",
+          "description": "15 个冲突/灾害易发区的温度与降水异常监测,30 天基线对比。",
+          "freshness": "按源",
+          "role": "climate_anomaly 信号源;放大受影响国家 CII 分",
+          "fallback": [],
+          "caveats": [
+            "极端:温度 >5°C 或降水 >80mm/天高于基线",
+            "中度:温度 >3°C 或降水 >40mm/天高于基线",
+            "气候压力是公认的冲突加速剂,异常进入信号聚合器并放大 CII"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "displacement",
+      "name": "流离失所",
+      "sources": [
+        {
+          "id": "un-ocha-hapi",
+          "name": "UN OCHA HAPI",
+          "provider": "UN OCHA 人道主义 API",
+          "domain": "displacement",
+          "data_type": "api",
+          "description": "难民、寻求庇护者与境内流离失所者(IDP)人口级数据。",
+          "freshness": "按源",
+          "role": "displacement 信号源;流出进入 CII 组件(滞后指标)",
+          "fallback": [],
+          "caveats": [
+            "危机标记:>100 万流离失所(红)、>50 万(橙)",
+            "高流离失所是滞后不稳定性指标,头条消退后仍持续"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intel",
+      "name": "情报 Feed",
+      "sources": [
+        {
+          "id": "telegram-osint",
+          "name": "Telegram OSINT",
+          "provider": "GramJS MTProto + Railway relay",
+          "domain": "intel",
+          "data_type": "telegram",
+          "description": "56 个频道(full 集):冲突区、OSINT 分析、突发新闻;常领先传统通讯社数分钟。",
+          "freshness": "60 秒轮询周期,每频道 15 秒超时,整周期 3 分钟硬超时",
+          "role": "原始低延迟情报流;话题分类在查询时按 /telegram/feed 完成",
+          "fallback": [],
+          "caveats": [
+            "频道集故意包含官方、国家附属、党派、交战方频道 —— 是原始 OSINT 线索,不是背书事实",
+            "Telegram 频道不带 RSS 式 stateAffiliation/宣传风险字段,偏见评估需用频道身份 + 运营 tier",
+            "按 ID 去重、过滤纯媒体帖、截断 800 字符、200 项滚动缓冲",
+            "60 秒启动延迟防 AUTH_KEY_DUPLICATED(旧容器须完全断开)",
+            "FLOOD_WAIT 提前终止周期而非传播到所有频道;3.5 分钟卡轮守卫强制清互斥锁"
+          ]
+        },
+        {
+          "id": "oref",
+          "name": "OREF 火箭警报",
+          "provider": "Israel Home Front Command (Pikud HaOref)",
+          "domain": "intel",
+          "data_type": "alert",
+          "description": "以色列入境火箭/导弹/无人机空袭警报,实时信号。",
+          "freshness": "每 5 分钟轮询活跃警报",
+          "role": "active 告警;CII 冲突组件提升(最高 +50 分)",
+          "fallback": [
+            "Phase 1: Redis 历史(过滤 >7 天)",
+            "Phase 2: 上游 OREF API 指数退避重试(3 次,3s/6s/12s + jitter)"
+          ],
+          "caveats": [
+            "Akamai WAF 防护:必须用 curl(非 Node fetch,JA3 被阻断)经住宅代理 + 以色列出口 IP",
+            "脏标记去重防冗余写;波检测按时间戳分组识别攻击波",
+            "1480 条希伯来→英文地名翻译字典;sanitizeHebrew() 剥离 Unicode 双向控制字符防错配",
+            "CII 提升:25 + min(25, alertCount*5);24 小时历史 3-9 次 +5、10+ 次 +10"
+          ]
+        },
+        {
+          "id": "security-advisories",
+          "name": "政府旅行建议",
+          "provider": "US State Dept + Australia DFAT + UK FCDO + 13 US 使馆 + CDC/ECDC/WHO",
+          "domain": "intel",
+          "data_type": "rss",
+          "description": "国家情报机构的专家风险评估;24 个 feed 每小时种子。",
+          "freshness": "每小时(Railway cron seed)",
+          "role": "advisory 信号源;CII 分数提升与地板",
+          "fallback": [
+            "live byCountry 等级(Redis seed)",
+            "CII 内嵌 State Dept 回退表(有限国家,版本化)"
+          ],
+          "caveats": [
+            "等级:Do-Not-Travel(4) > Reconsider(3) > Caution(2) > Normal(1) > Info(0)",
+            "RSS(item)与 Atom(entry)都解析;265 条目国家名映射匹配复合名/别名",
+            "CII 提升:Do-Not-Travel +15、Reconsider +10、Caution +5",
+            "CII 地板:Do-Not-Travel 最低 60 分、Reconsider 最低 50 分",
+            "advisoryProvenance 区分 live/fallback/absent,下游可判别分数用了哪个输入"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "financial",
+      "name": "金融与经济",
+      "sources": [
+        {
+          "id": "bis",
+          "name": "BIS 数据",
+          "provider": "Bank for International Settlements",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "央行政策利率、REER 实际有效汇率、信贷/GDP 比。",
+          "freshness": "按源",
+          "role": "宏观指标源",
+          "fallback": []
+        },
+        {
+          "id": "ecb",
+          "name": "ECB 数据门户",
+          "provider": "European Central Bank",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "FX 参考汇率、收益率曲线、ESTR/EURIBOR、金融压力指数。",
+          "freshness": "按源",
+          "role": "欧洲宏观源",
+          "fallback": []
+        },
+        {
+          "id": "fred",
+          "name": "FRED",
+          "provider": "St. Louis Fed",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "美国/全球利率与宏观序列。",
+          "freshness": "按源",
+          "role": "宏观指标源",
+          "fallback": []
+        },
+        {
+          "id": "world-bank",
+          "name": "World Bank Open Data",
+          "provider": "World Bank",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "发展指标、可再生能源、技术就绪度。",
+          "freshness": "按源",
+          "role": "发展指标源",
+          "fallback": []
+        },
+        {
+          "id": "un-comtrade",
+          "name": "UN Comtrade",
+          "provider": "United Nations",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "全球商品贸易流。",
+          "freshness": "按源",
+          "role": "贸易数据源(中国深度分析引用)",
+          "fallback": []
+        },
+        {
+          "id": "wto",
+          "name": "WTO 贸易政策",
+          "provider": "World Trade Organization",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "活跃贸易限制、关税趋势、双边贸易流、SPS/TBT 壁垒。",
+          "freshness": "按源",
+          "role": "贸易政策情报",
+          "fallback": []
+        },
+        {
+          "id": "nbs-china",
+          "name": "中国国家统计局",
+          "provider": "National Bureau of Statistics of China",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "中国官方经济统计:GDP、CPI、就业、社零、固投、人口。",
+          "freshness": "按发布日历",
+          "role": "中国宏观权威源",
+          "fallback": [],
+          "caveats": [
+            "官方发布,属 gov 类来源:数值是官方口径,引用时标注发布方",
+            "数据按国家统计制度口径,与他国数据可比性需注意"
+          ]
+        },
+        {
+          "id": "pboc-china",
+          "name": "中国人民银行",
+          "provider": "People's Bank of China",
+          "domain": "financial",
+          "data_type": "api",
+          "description": "中国货币政策:贷款市场报价利率(LPR)、利率走廊、流动性操作。",
+          "freshness": "按月(LPR 20 日公布)",
+          "role": "中国金融政策源",
+          "fallback": [],
+          "caveats": [
+            "官方发布,属 gov 类来源;LPR 影响房贷/企业贷定价"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "energy",
+      "name": "能源",
+      "sources": [
+        {
+          "id": "gie-agsi",
+          "name": "GIE AGSI+",
+          "provider": "GIE",
+          "domain": "energy",
+          "data_type": "api",
+          "description": "欧盟天然气储存水平。",
+          "freshness": "按源",
+          "role": "欧洲能源源",
+          "fallback": []
+        },
+        {
+          "id": "eia",
+          "name": "US EIA",
+          "provider": "US Energy Information Administration",
+          "domain": "energy",
+          "data_type": "api",
+          "description": "原油库存、燃料价格、能源数据。",
+          "freshness": "按源",
+          "role": "能源数据源",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "aviation",
+      "name": "航空情报",
+      "sources": [
+        {
+          "id": "aviation-intel",
+          "name": "航空情报面板(6 标签)",
+          "provider": "FAA ASWS + AviationStack + ICAO + OpenSky/Wingbits + RSS + Travelpayouts",
+          "domain": "aviation",
+          "data_type": "api",
+          "description": "综合航空监控:运行、航班、航司、跟踪、新闻、票价。",
+          "freshness": "5 分钟轮询,SmartPollLoop 自适应退避",
+          "role": "航空情报总成",
+          "fallback": [],
+          "caveats": [
+            "延误严重度五级:normal/minor/moderate/major/severe,各告警带严重度来源(FAA/Eurocontrol/计算)",
+            "NOTAM 关闭检测:ICAO Q-code(FA/AH/AL/AW/AC/AM × LC/AS/AU/XX/AW)+ 关键词(AD CLSD/AIRPORT CLOSED/AIRSPACE CLOSED)",
+            "无 AviationStack key 时生成概率模拟延迟(仅演示)"
+          ]
+        },
+        {
+          "id": "travelpayouts",
+          "name": "Travelpayouts",
+          "provider": "Travelpayouts",
+          "domain": "aviation",
+          "data_type": "api",
+          "description": "多航司票价报价(经济/商务舱、货币换算、非中转过滤)。",
+          "freshness": "缓存",
+          "role": "航班价格源",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "health",
+      "name": "健康",
+      "sources": [
+        {
+          "id": "health-agencies",
+          "name": "卫生机构",
+          "provider": "CDC + ECDC + WHO",
+          "domain": "health",
+          "data_type": "rss",
+          "description": "CDC 旅行通知、ECDC 流行病学更新、WHO 新闻与非洲紧急事件。",
+          "freshness": "按源",
+          "role": "旅行建议健康组件 + 卫生事件",
+          "fallback": []
+        }
+      ]
+    }
+  ],
+  "freshness_tracker": {
+    "description": "35 个数据源的新鲜度跟踪,状态分级 fresh(<15min) / stale(2h) / very_stale(6h) / no_data / error / disabled",
+    "required_for_risk": ["GDELT", "RSS"],
+    "note": "requiredForRisk 驱动 Strategic Risk 面板的硬性数据不足门,而非 CII 分数输入的完整清单;评分相关源(UCDP events、ACLED conflict、news summaries、cyber threats)通过源专属健康 + riskScores 信号密度覆盖跟踪。"
+  }
+}

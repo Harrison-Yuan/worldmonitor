@@ -1,0 +1,877 @@
+{
+  "schema_version": "1.0",
+  "description": "分析路由知识 —— 根据用户提问决定:查什么信息(information_needs)、从哪查(sources/signals)、如何验证判断(verification/caveats)、给出什么有效信息(output_framework)。由 MCP tool plan_analysis 消费。",
+  "routes": [
+    {
+      "id": "conflict",
+      "name": "武装冲突与军事升级",
+      "keywords": [
+        "conflict",
+        "war",
+        "strike",
+        "attack",
+        "escalation",
+        "military",
+        "missile",
+        "air strike",
+        "冲突",
+        "战争",
+        "打击",
+        "袭击",
+        "升级",
+        "军事",
+        "导弹",
+        "空袭",
+        "台海",
+        "台湾海峡",
+        "taiwan",
+        "strait",
+        "border",
+        "battle"
+      ],
+      "information_needs": [
+        "近期武装冲突事件与伤亡(ACLED/UCDP,注意 UCDP 是滞后年度数据)",
+        "军事活动强度:军机/军舰/兵力集结与增援(ADS-B/AIS/战区态势)",
+        "攻击事件细节:伊朗地区打击与以色列 OREF 空袭警报",
+        "冲突方官方声索 vs 独立观测的区别"
+      ],
+      "sources": [
+        "acled",
+        "ucdp",
+        "adsb",
+        "ais",
+        "liveuamap",
+        "oref",
+        "telegram-osint"
+      ],
+      "signals": [
+        "active-strike",
+        "military-flight",
+        "military-vessel",
+        "ais-disruption"
+      ],
+      "verification": [
+        "用双源交叉验证:ACLED(实时)为主,UCDP(年度)仅为回退;两源都空时报告 COVERAGE_PARTIAL 而非无冲突",
+        "政府/军方发布(台湾 MND、统幕)是主张不是独立观测,须标注来源",
+        "事件归属:未归属事件默认不采信;名称归一化失败会让查找失败伪装成字段不存在",
+        "检查数据新鲜度:cached_at/stale 与新鲜度分级,断源必须显示为缺口而非零值"
+      ],
+      "caveats": [
+        "ACLED 无认证时静默降级为空,冲突评分退回 UCDP 可能 2 年窗口无事件",
+        "Telegram 频道含交战方/国家附属频道,是原始 OSINT 线索不是背书事实",
+        "军事声索、ADS-B/AIS 观测、新闻、市场观察是不同来源家族,不可合并计数"
+      ],
+      "recommended_tools": [
+        "get_conflict_events",
+        "get_military_posture",
+        "get_signal_convergence",
+        "get_hotspot_escalation",
+        "get_country_risk",
+        "search_intel_history",
+        "get_similar_events"
+      ],
+      "output_framework": [
+        "结论(发生了什么,来自哪些独立来源)",
+        "证据链(事件/伤亡/军事活动的来源与时间戳,官方声索与独立观测分开标注)",
+        "烈度判断(基于信号阈值而非主观)",
+        "不确定性与信息缺口(哪些源不可用/滞后)",
+        "下一步可验证的观察点"
+      ],
+      "endpoints": [
+        "list-acled-events",
+        "list-ucdp-events",
+        "list-iran-events",
+        "list-military-flights",
+        "list-telegram-feed",
+        "list-oref-alerts",
+        "get-risk-scores"
+      ]
+    },
+    {
+      "id": "unrest",
+      "name": "抗议与社会动荡",
+      "keywords": [
+        "protest",
+        "riot",
+        "unrest",
+        "demonstration",
+        "civil",
+        "strike action",
+        "抗议",
+        "骚乱",
+        "动荡",
+        "示威",
+        "民变"
+      ],
+      "information_needs": [
+        "抗议/骚乱事件:地点、规模、死亡、关键词(ACLED+GDELT 双源)",
+        "并发信号:断网、军事部署、政府响应 —— 收敛信号",
+        "国家不稳定度基线(CII)与事件乘数",
+        "制度感知:民主国家常规抗议不触发不稳定,威权国家每次抗议都显著"
+      ],
+      "sources": [
+        "acled",
+        "gdelt",
+        "cloudflare-radar",
+        "adsb"
+      ],
+      "signals": [
+        "protest",
+        "internet-outage",
+        "military-flight"
+      ],
+      "verification": [
+        "ACLED/GDELT 0.1° 网格同日去重,ACLED 优先(编辑置信度高)",
+        "GDELT mention>=5 才纳入,>=30 才标记 validated;低提及量是噪声不是事件",
+        "死亡或骚乱关键词=高严重度;并发断网=严重度提升",
+        "CII 变化:24h 有符号移动,±1 仍稳定,±2 才标记趋势"
+      ],
+      "caveats": [
+        "ACLED 授权缺失时抗议数据降级为空,健康报 COVERAGE_PARTIAL",
+        "未归属事件被默认丢弃,除非发布者可证明归属"
+      ],
+      "recommended_tools": [
+        "get_conflict_events",
+        "get_country_risk",
+        "get_news_clusters",
+        "get_keyword_spikes",
+        "get_alert_digest",
+        "get_social_velocity"
+      ],
+      "output_framework": [
+        "事件清单(时间/地点/规模/来源,双源标记)",
+        "并发信号(断网/军事活动是否同时出现)",
+        "国家背景(CII 基线、抗议在制度下的意义)",
+        "趋势(事件数变化、新闻热度、社交速度)",
+        "缺口(哪些源不可用,影响置信度)"
+      ],
+      "endpoints": [
+        "list-unrest-events",
+        "list-acled-events",
+        "list-cross-source-signals",
+        "get-risk-scores",
+        "list-internet-outages"
+      ]
+    },
+    {
+      "id": "gps_jamming",
+      "name": "电子战与 GPS 干扰",
+      "keywords": [
+        "gps",
+        "jamming",
+        "spoofing",
+        "gnss",
+        "electronic warfare",
+        "干扰",
+        "欺骗",
+        "电子战"
+      ],
+      "information_needs": [
+        "干扰地理分布:H3 六边形网格上的异常机占比分级",
+        "干扰区域与冲突区域(12 命名战区)的重叠关系",
+        "对航空/航海/导弹制导的战略含义"
+      ],
+      "sources": [
+        "gpsjam",
+        "adsb"
+      ],
+      "signals": [
+        "gps-jamming"
+      ],
+      "verification": [
+        "网格内飞机<3 排除(统计噪声);异常占比 0-2% 低、2-10% 中、>10% 高",
+        "干扰是 ADS-B 应答机上报的代理指标,非直接测量 —— 未上报飞机不可见",
+        "与冲突区域包围盒重叠是相关性不是因果"
+      ],
+      "caveats": [
+        "gpsjam 依赖 ADS-B Exchange 上报,覆盖随上报飞机密度变化"
+      ],
+      "recommended_tools": [
+        "get_military_posture",
+        "get_alert_digest"
+      ],
+      "output_framework": [
+        "干扰热点(位置/等级/覆盖范围)",
+        "与冲突区域的时空相关性",
+        "受影响面(航空/航海/基础设施)"
+      ],
+      "endpoints": [
+        "list-gps-interference",
+        "list-military-flights"
+      ]
+    },
+    {
+      "id": "cyber",
+      "name": "网络攻击与断网",
+      "keywords": [
+        "cyber",
+        "hack",
+        "breach",
+        "malware",
+        "ransomware",
+        "phishing",
+        "outage",
+        "internet",
+        "ddos",
+        "网络",
+        "攻击",
+        "断网",
+        "勒索",
+        "漏洞"
+      ],
+      "information_needs": [
+        "活跃 IOC:C2 服务器、恶意软件主机、钓鱼、恶意 URL(六源)",
+        "互联网断网事件(Cloudflare Radar)",
+        "网络威胁与地理/地缘的关联(APTs 归属、冲突背景)"
+      ],
+      "sources": [
+        "feodo",
+        "urlhaus",
+        "c2intelfeeds",
+        "alienvault-otx",
+        "abuseipdb",
+        "ransomware-live",
+        "cloudflare-radar"
+      ],
+      "signals": [
+        "internet-outage"
+      ],
+      "verification": [
+        "IOC 14 天滚动窗口,10 分钟缓存 —— 超窗数据已过期",
+        "IP 富化(ipinfo.io,freeipapi 回退)24h 缓存,地理归属可能滞后",
+        "断网与冲突/抗议的收敛是事件信号,单点断网需复核来源",
+        "未审核来源的威胁情报按 fail-closed 处理:unknown 不是低风险"
+      ],
+      "caveats": [
+        "显示上限 500 IOC,数据被裁剪不代表威胁减少",
+        "恶意 IP 是众包报告,误报率高,需交叉验证"
+      ],
+      "recommended_tools": [
+        "get_cyber_threats",
+        "get_news_intelligence",
+        "get_alert_digest"
+      ],
+      "output_framework": [
+        "威胁类型与规模(IOC 分类计数)",
+        "活跃度(新出现在窗口内的 IOC 数)",
+        "地理/组织归属(攻击者关联)",
+        "断网等物理影响(若有)",
+        "来源新鲜度与置信度"
+      ],
+      "endpoints": [
+        "list-cyber-threats",
+        "list-internet-outages",
+        "list-feed-digest"
+      ]
+    },
+    {
+      "id": "disaster",
+      "name": "自然灾害",
+      "keywords": [
+        "earthquake",
+        "flood",
+        "hurricane",
+        "typhoon",
+        "volcano",
+        "wildfire",
+        "tsunami",
+        "disaster",
+        "地震",
+        "洪水",
+        "台风",
+        "飓风",
+        "火山",
+        "野火",
+        "海啸",
+        "灾害"
+      ],
+      "information_needs": [
+        "事件(USGS/GDACS/EONET 三源合并)与告警级别",
+        "受影响人口估算(按事件半径)",
+        "对基础设施(管线/港口/光缆)的级联影响",
+        "气候异常背景(30 天基线偏离)"
+      ],
+      "sources": [
+        "usgs",
+        "gdacs",
+        "eonet",
+        "nasa-firms",
+        "open-meteo-era5"
+      ],
+      "signals": [
+        "satellite-fire",
+        "climate-anomaly"
+      ],
+      "verification": [
+        "地震以 USGS 为准(EONET 地震被排除);GDACS 绿级被过滤(只报红/橙)",
+        "EONET 野火 48 小时窗口,超窗数据已失效",
+        "人口暴露是筛选信号不是伤亡预测(最近质心密度×半径圆盘)",
+        "灾害数据是独立观测,与官方声索(若有)分开"
+      ],
+      "caveats": [
+        "M4.5 以下地震不覆盖",
+        "0.1° 网格去重可能合并相邻独立事件"
+      ],
+      "recommended_tools": [
+        "get_natural_disasters",
+        "get_population_exposure",
+        "get_alert_digest",
+        "get_climate_data",
+        "get_test_site_seismicity",
+        "get_radiation_data"
+      ],
+      "output_framework": [
+        "事件(类型/位置/强度/时间,三源一致性与差异)",
+        "受影响人口与地理范围",
+        "基础设施级联影响",
+        "预警级别与时效",
+        "后续监测建议"
+      ],
+      "endpoints": [
+        "list-earthquakes",
+        "list-fire-detections",
+        "list-natural-events",
+        "list-climate-disasters",
+        "list-radiation-observations",
+        "get-population-exposure",
+        "list-thermal-escalations"
+      ]
+    },
+    {
+      "id": "climate",
+      "name": "气候异常",
+      "keywords": [
+        "climate",
+        "temperature",
+        "drought",
+        "heat",
+        "anomaly",
+        "precipitation",
+        "rainfall",
+        "气候",
+        "高温",
+        "干旱",
+        "异常",
+        "降水"
+      ],
+      "information_needs": [
+        "15 个易发区的温度/降水偏离(30 天 ERA5 基线)",
+        "异常严重度(>3°C 中度、>5°C 极端;>40mm 中度、>80mm 极端)",
+        "气候压力作为冲突加速剂的信号放大(CII)"
+      ],
+      "sources": [
+        "open-meteo-era5"
+      ],
+      "signals": [
+        "climate-anomaly"
+      ],
+      "verification": [
+        "异常定义是相对基线的偏离,不是绝对读数 —— 先确认基线窗口",
+        "气候异常进入信号聚合器并放大受影响国家 CII",
+        "温度与降水需分开看,单项极端与双项极端含义不同"
+      ],
+      "caveats": [
+        "ERA5 是再分析数据,发布有滞后",
+        "区域覆盖限于 15 个预定义易发区"
+      ],
+      "recommended_tools": [
+        "get_climate_data",
+        "get_temporal_anomalies",
+        "get_country_risk"
+      ],
+      "output_framework": [
+        "异常区与严重度列表",
+        "对受影响国家的次级风险(粮食/水/冲突)",
+        "时间趋势(异常是单日还是持续)"
+      ],
+      "endpoints": [
+        "list-climate-anomalies",
+        "list-climate-disasters",
+        "get-risk-scores"
+      ]
+    },
+    {
+      "id": "market",
+      "name": "市场、金融与预测市场",
+      "keywords": [
+        "market",
+        "stock",
+        "crypto",
+        "bitcoin",
+        "oil price",
+        "commodity",
+        "forex",
+        "prediction market",
+        "polymarket",
+        "market price",
+        "etf",
+        "stablecoin",
+        "市场",
+        "股市",
+        "加密",
+        "比特币",
+        "油价",
+        "商品",
+        "预测市场",
+        "汇率"
+      ],
+      "information_needs": [
+        "报价与指数(股票/商品/加密/外汇)及变动",
+        "预测市场概率(领先指标:概率移动早于新闻=早期预警)",
+        "宏观信号(7 信号雷达、BTC ETF 流量、稳定币锚定、恐惧贪婪指数)",
+        "新闻与市场的相关性"
+      ],
+      "sources": [
+        "yahoo-finance",
+        "coingecko",
+        "polymarket",
+        "btc-etf-flows",
+        "stablecoin-peg"
+      ],
+      "signals": [],
+      "verification": [
+        "预测市场要求与 50% 显著背离或量>$50K,否则是噪声",
+        "市场报价有缓存(8 分钟),延迟敏感判断须核对 cached_at",
+        "市场事件是相关不是因果:价格移动需与新闻/地缘事件交叉验证",
+        "Yahoo 请求已错峰,接口稳定但外部可用性需检查 stale"
+      ],
+      "caveats": [
+        "Polymarket 服务端被 JA3 阻断,数据走多层回退,看 provenenace",
+        "模拟/演示数据(无 API key 时)必须与真实数据区分"
+      ],
+      "recommended_tools": [
+        "get_market_data",
+        "get_prediction_markets",
+        "get_economic_data",
+        "get_country_macro",
+        "get_forecast_predictions",
+        "get_social_velocity",
+        "get_news_intelligence"
+      ],
+      "output_framework": [
+        "关键资产变动(价格/涨跌/成交量)",
+        "预测市场概率与新闻事件的时序关系(谁先动)",
+        "宏观背景(利率、避险情绪、政策)",
+        "相关性与因果边界"
+      ],
+      "endpoints": [
+        "list-market-quotes",
+        "list-crypto-quotes",
+        "list-commodity-quotes",
+        "list-prediction-markets",
+        "list-etf-flows",
+        "get-fear-greed-index",
+        "get-macro-signals",
+        "get-forecasts"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "基础设施、供应链与能源",
+      "keywords": [
+        "cable",
+        "pipeline",
+        "port",
+        "chokepoint",
+        "supply chain",
+        "energy",
+        "oil",
+        "gas",
+        "grid",
+        "outage",
+        "infrastructure",
+        "海缆",
+        "管道",
+        "港口",
+        "咽喉",
+        "供应链",
+        "能源",
+        "石油",
+        "天然气",
+        "停电"
+      ],
+      "information_needs": [
+        "关键节点状态:海缆健康、港口吞吐、咽喉点(苏伊士/马六甲等)、管道",
+        "断供/中断事件与级联影响(基础设施级联模型)",
+        "能源数据:天然气储存、原油库存、运费压力",
+        "去中心化冗余候选与容量份额"
+      ],
+      "sources": [
+        "submarine-cables",
+        "ports",
+        "trade-routes",
+        "pipelines",
+        "gie-agsi",
+        "eia",
+        "cloudflare-radar"
+      ],
+      "signals": [
+        "ais-disruption",
+        "internet-outage"
+      ],
+      "verification": [
+        "级联模拟的容量沿路径相乘,远处影响衰减 —— 不是全程满强度",
+        "关键度:油LNG 港口 0.9、集装箱 0.7、海军 0.4",
+        "咽喉点中断对贸易路线的影响需与市场报价交叉验证",
+        "缓存层多级,注意 stale 标记与 unavailable_inputs"
+      ],
+      "caveats": [
+        "海缆目录是静态表,健康通告来自 NGA 航行通告",
+        "供应链压力是派生指标,先看原始输入新鲜度"
+      ],
+      "recommended_tools": [
+        "get_infrastructure_status",
+        "get_supply_chain_data",
+        "get_chokepoint_status",
+        "simulate_infrastructure_cascade",
+        "get_energy_intelligence",
+        "get_alert_digest"
+      ],
+      "output_framework": [
+        "关键节点状态(中断/降级/正常)",
+        "级联影响范围与受影响国家",
+        "冗余与恢复路径",
+        "能源/运费等派生压力",
+        "对市场与地缘的传导"
+      ],
+      "endpoints": [
+        "get-cable-health",
+        "get-chokepoint-status",
+        "list-energy-disruptions",
+        "list-internet-outages",
+        "list-fuel-shortages",
+        "get-shipping-stress",
+        "get-shipping-rates",
+        "get-eu-gas-storage"
+      ]
+    },
+    {
+      "id": "aviation",
+      "name": "航空与空域",
+      "keywords": [
+        "flight",
+        "airport",
+        "airspace",
+        "delay",
+        "notam",
+        "airline",
+        "航班",
+        "机场",
+        "空域",
+        "延误",
+        "航空"
+      ],
+      "information_needs": [
+        "机场延误/取消/NOTAM 关闭(115 机场,三源)",
+        "空域关闭(MENA 军事/安全事件)",
+        "航班状态与价格",
+        "军事空域活动与民航的交互"
+      ],
+      "sources": [
+        "airport-monitoring",
+        "aviation-intel",
+        "adsb"
+      ],
+      "signals": [
+        "airport-delay"
+      ],
+      "verification": [
+        "延误分级:>=15min/15% minor,30/30 moderate,45/45 major,60/60 severe;取消率>=80%且航班>=10=closure",
+        "NOTAM 关闭覆盖既有延误告警(severe/closure)",
+        "无 AviationStack key 时的概率模拟延迟是演示数据,必须标注",
+        "军用与民航航迹分开解读"
+      ],
+      "caveats": [
+        "AviationStack 计算基于最近 100 航班,小机场样本偏差大"
+      ],
+      "recommended_tools": [
+        "get_aviation_status",
+        "get_airspace",
+        "get_military_posture",
+        "search_flights",
+        "search_flight_prices_by_date"
+      ],
+      "output_framework": [
+        "机场延误/关闭清单(分级与严重度来源)",
+        "空域管制事件与军事背景关联",
+        "受影响的航线/航班",
+        "趋势(5 分钟轮询的变化)"
+      ],
+      "endpoints": [
+        "list-airport-delays",
+        "get-airport-ops-summary",
+        "list-aviation-news",
+        "track-aircraft"
+      ]
+    },
+    {
+      "id": "displacement",
+      "name": "流离失所与人道主义",
+      "keywords": [
+        "refugee",
+        "displacement",
+        "idp",
+        "humanitarian",
+        "asylum",
+        "难民",
+        "流离失所",
+        "人道",
+        "庇护"
+      ],
+      "information_needs": [
+        "流出/接收国排名(起源 vs 收容)",
+        "危机标记(>100 万红、>50 万橙)",
+        "与冲突/灾害的因果关联(滞后指标)",
+        "CII 中 displacement 组件(≤20 boost)"
+      ],
+      "sources": [
+        "un-ocha-hapi",
+        "acled",
+        "usgs"
+      ],
+      "signals": [
+        "displacement"
+      ],
+      "verification": [
+        "人口数据滞后于事件,是长期趋势不是实时指标",
+        "高流离失所是滞后不稳定性指标,头条消退后仍持续",
+        "与冲突事件交叉验证因果方向"
+      ],
+      "caveats": [
+        "HAPI 覆盖按联合国报告周期,注意数据日期"
+      ],
+      "recommended_tools": [
+        "get_displacement_data",
+        "get_population_exposure",
+        "get_country_brief",
+        "get_conflict_events"
+      ],
+      "output_framework": [
+        "流离失所规模与方向(起源→收容)",
+        "危机等级标记",
+        "驱动因素(冲突/灾害)证据",
+        "人道需求趋势"
+      ],
+      "endpoints": [
+        "get-displacement-summary",
+        "get-population-exposure",
+        "get-humanitarian-summary"
+      ]
+    },
+    {
+      "id": "sanctions",
+      "name": "制裁、贸易与关税",
+      "keywords": [
+        "sanction",
+        "tariff",
+        "trade",
+        "embargo",
+        "export control",
+        "制裁",
+        "关税",
+        "贸易",
+        "禁运",
+        "出口管制"
+      ],
+      "information_needs": [
+        "制裁制度状态与压力(sanctions_pressure 基线偏离)",
+        "关税趋势与贸易限制(WTO)",
+        "双边贸易流与相关企业敞口",
+        "对能源/科技/金融的传导"
+      ],
+      "sources": [
+        "sanctions",
+        "wto",
+        "un-comtrade"
+      ],
+      "signals": [
+        "sanctions-pressure"
+      ],
+      "verification": [
+        "制裁压力是基线偏离告警,先确认基线定义",
+        "贸易数据(UN Comtrade)滞后,注意发布周期",
+        "企业敞口判断用权威注册(Filer 解析),模糊名称不猜",
+        "媒体声索与官方文件(制裁清单)分开"
+      ],
+      "caveats": [
+        "制裁政策变化快,新闻 feed 与官方源时间差是判断要素"
+      ],
+      "recommended_tools": [
+        "get_sanctions_data",
+        "get_tariff_trends",
+        "get_economic_data",
+        "get_company_intelligence",
+        "get_china_decision_signals"
+      ],
+      "output_framework": [
+        "制裁/关税状态与近期变化",
+        "受影响行业与企业",
+        "贸易流与价格传导证据",
+        "政策时间线与下一观察点"
+      ],
+      "endpoints": [
+        "list-sanctions-pressure",
+        "lookup-sanction-entity",
+        "get-tariff-trends",
+        "get-trade-restrictions"
+      ]
+    },
+    {
+      "id": "socioeconomic",
+      "name": "社会经济与民生环境",
+      "keywords": [
+        "经济",
+        "经济环境",
+        "大环境",
+        "民生",
+        "普通人",
+        "生活",
+        "就业",
+        "失业",
+        "房价",
+        "物价",
+        "通胀",
+        "消费",
+        "收入",
+        "债务",
+        "人口",
+        "出生率",
+        "房贷",
+        "利率",
+        "economy",
+        "cost of living",
+        "housing",
+        "inflation",
+        "wages",
+        "job"
+      ],
+      "information_needs": [
+        "就业与收入:失业率、青年就业、平均工资、社会零售(消费意愿)",
+        "物价与购买力:CPI/PPI 趋势,通胀对储蓄与负债的实际影响",
+        "资产与负债:房价、LPR 利率、居民杠杆、理财/存款收益",
+        "人口与结构:出生率、老龄化、抚养比与养老负担",
+        "政策信号:财政刺激、减税、社保、产业政策"
+      ],
+      "sources": [
+        "nbs-china",
+        "pboc-china",
+        "bis",
+        "world-bank",
+        "wto"
+      ],
+      "signals": [],
+      "verification": [
+        "中国数据用官方口径(NBS/PBoC),引用标注发布方;关键指标(如青年失业率)官方与独立机构口径不同,须交叉说明",
+        "数据按发布日历(月度/季度),核对发布时间,滞后期明确标注",
+        "统计口径随制度调整,跨期比较先确认口径一致(登记 vs 调查失业率等)",
+        "官方声索与独立观测分开;宏观数据是滞后指标,不能当实时温度计"
+      ],
+      "caveats": [
+        "中国官方统计属 gov 类来源,部分指标口径与国际惯例不同,不可直接横向比较",
+        "房价/债务等指标多机构版本并存,以官方 + 权威第三方交叉为准",
+        "普通人生存感受由就业+物价+资产+预期共同决定,单一指标会误导"
+      ],
+      "recommended_tools": [
+        "get_economic_data",
+        "get_country_macro",
+        "get_market_data",
+        "get_forecast_predictions",
+        "get_country_risk"
+      ],
+      "output_framework": [
+        "就业与收入现状(官方口径 + 独立交叉)",
+        "物价与购买力(CPI 趋势 vs 收入增速)",
+        "资产端(房价/利率/居民杠杆)",
+        "政策信号(刺激/改革/社保)",
+        "对普通人的可操作含义(储蓄/负债/择业/消费)",
+        "数据口径与缺口声明"
+      ],
+      "endpoints": [
+        "get-china-macro-snapshot",
+        "get-china-activity-nowcast",
+        "get-macro-signals",
+        "get-economic-stress",
+        "get-bis-policy-rates",
+        "list-world-bank-indicators",
+        "list-feed-digest"
+      ]
+    },
+    {
+      "id": "country_risk",
+      "name": "国家综合风险分析",
+      "keywords": [
+        "country",
+        "china",
+        "中国",
+        "risk",
+        "instability",
+        "situation",
+        "overview",
+        "brief",
+        " 局势",
+        "风险",
+        "不稳定",
+        "概况",
+        "分析"
+      ],
+      "information_needs": [
+        "CII 四组件分解(U 骚乱/C 冲突/S 安全/I 信息)与综合分",
+        "基线风险与事件乘数(低基线国家高分更响亮)",
+        "热点升级分、焦点实体、信号收敛",
+        "新闻与建议等级(旅行建议是专家风险评估)"
+      ],
+      "sources": [
+        "acled",
+        "ucdp",
+        "adsb",
+        "ais",
+        "security-advisories",
+        "telegram-osint",
+        "polymarket"
+      ],
+      "signals": [
+        "advisory",
+        "protest",
+        "military-flight",
+        "active-strike"
+      ],
+      "verification": [
+        "CII 是编辑观点不是实证,带 methodology_version 引用",
+        "分数地板:UCDP 战争=70/轻微=50;建议 do-not-travel=60/reconsider=50",
+        "建议等级优先 live 数据,回退表用 advisoryProvenance 判别",
+        "低 baseline 国家的高分比高 baseline 同等分更显著",
+        "未归属/未审核信息 fail-closed:显示为未知而非正常"
+      ],
+      "caveats": [
+        "CII 归因有误差:矩形近似、歧义名拒绝(裸 korean 不识别)",
+        "官方声索与独立观测分开,不合并计数"
+      ],
+      "recommended_tools": [
+        "get_country_risk",
+        "get_country_brief",
+        "get_world_brief",
+        "get_focal_points",
+        "get_hotspot_escalation",
+        "get_alert_digest",
+        "analyze_situation"
+      ],
+      "output_framework": [
+        "综合风险得分与四组件分解(带方法版)",
+        "驱动因素(事件/军事/信息/建议)",
+        "趋势(24h 变化与死区说明)",
+        "预测市场概率与新闻证据",
+        "信息缺口与置信度声明"
+      ],
+      "endpoints": [
+        "get-risk-scores",
+        "get-country-risk",
+        "get-country-intel-brief",
+        "list-cross-source-signals",
+        "list-security-advisories",
+        "list-prediction-markets",
+        "get-intel-timeline",
+        "list-telegram-feed"
+      ]
+    }
+  ]
+}

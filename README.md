@@ -1,217 +1,246 @@
-# World Monitor
+# WorldMonitor 懂行知识 MCP
 
-[简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Harrison-Yuan/worldmonitor)
 
-**Real-time global intelligence dashboard** — AI-powered news aggregation, geopolitical monitoring, and infrastructure tracking in a unified situational awareness interface.
+> 点上方按钮:网页登录 Cloudflare → 授权 GitHub → fork 部署,无需本地安装任何东西。
+> 本仓库即该 MCP 项目(独立、自包含)。点上方按钮:网页登录 Cloudflare → 授权 GitHub → fork 部署,无需本地安装(官方文档: [Deploy to Cloudflare buttons](https://developers.cloudflare.com/workers/platform/deploy-button/))。
 
-[![GitHub stars](https://img.shields.io/github/stars/koala73/worldmonitor?style=social)](https://github.com/koala73/worldmonitor/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/re63kWKxaz)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Last commit](https://img.shields.io/github/last-commit/koala73/worldmonitor)](https://github.com/koala73/worldmonitor/commits/main)
-[![Latest release](https://img.shields.io/github/v/release/koala73/worldmonitor?style=flat)](https://github.com/koala73/worldmonitor/releases/latest)
-[![npm: worldmonitor](https://img.shields.io/npm/v/worldmonitor?logo=npm&label=npm)](https://www.npmjs.com/package/worldmonitor)
-[![smithery badge](https://smithery.ai/badge/worldmonitor/wm-mcp)](https://smithery.ai/servers/worldmonitor/wm-mcp)
-[![skills.sh](https://skills.sh/b/koala73/worldmonitor)](https://skills.sh/koala73/worldmonitor)
+自包含的"数据分析师 knowhow"资产包:**懂行数据 + MCP server**,零依赖、不挂接 WorldMonitor 项目,整个目录拷到哪里都能跑。
 
-<p align="center">
-  <a href="https://www.worldmonitor.app"><img src="https://img.shields.io/badge/Web_App-worldmonitor.app-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Web App"></a>&nbsp;
-  <a href="https://tech.worldmonitor.app"><img src="https://img.shields.io/badge/Tech_Variant-tech.worldmonitor.app-0891b2?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Tech Variant"></a>&nbsp;
-  <a href="https://finance.worldmonitor.app"><img src="https://img.shields.io/badge/Finance_Variant-finance.worldmonitor.app-059669?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Finance Variant"></a>&nbsp;
-  <a href="https://commodity.worldmonitor.app"><img src="https://img.shields.io/badge/Commodity_Variant-commodity.worldmonitor.app-b45309?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Commodity Variant"></a>&nbsp;
-  <a href="https://happy.worldmonitor.app"><img src="https://img.shields.io/badge/Happy_Variant-happy.worldmonitor.app-f59e0b?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Happy Variant"></a>&nbsp;
-  <a href="https://energy.worldmonitor.app"><img src="https://img.shields.io/badge/Energy_Variant-energy.worldmonitor.app-eab308?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Energy Variant"></a>
-</p>
+核心理念:模型拿到的不是一堆 feed,而是一套**判断方法** —— 根据用户提问,知道**查什么信息、从哪查、查出来如何验证判断分析、给出什么有效信息**。
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/worldmonitor"><img src="https://img.shields.io/npm/v/worldmonitor?style=for-the-badge&logo=npm&logoColor=white&label=npm%20i%20worldmonitor&color=CB3837" alt="npm i worldmonitor"></a>&nbsp;
-  <a href="https://www.npmjs.com/package/worldmonitor"><img src="https://img.shields.io/badge/CLI-npx%20worldmonitor-CB3837?style=for-the-badge&logo=npm&logoColor=white" alt="npx worldmonitor"></a>&nbsp;
-  <a href="https://pypi.org/project/worldmonitor-sdk/"><img src="https://img.shields.io/pypi/v/worldmonitor-sdk?style=for-the-badge&logo=pypi&logoColor=white&label=pip%20install%20worldmonitor-sdk&color=3775A9" alt="pip install worldmonitor-sdk"></a>&nbsp;
-  <a href="https://rubygems.org/gems/worldmonitor"><img src="https://img.shields.io/gem/v/worldmonitor?style=for-the-badge&logo=rubygems&logoColor=white&label=gem%20install%20worldmonitor&color=E9573F" alt="gem install worldmonitor"></a>&nbsp;
-  <a href="https://pkg.go.dev/github.com/koala73/worldmonitor/sdk/go"><img src="https://img.shields.io/badge/go%20get-sdk%2Fgo-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="go get github.com/koala73/worldmonitor/sdk/go"></a>
-</p>
+## 目录结构
 
-<p align="center">
-  <a href="https://www.worldmonitor.app/api/download?platform=windows-exe"><img src="https://img.shields.io/badge/Download-Windows_(.exe)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows"></a>&nbsp;
-  <a href="https://www.worldmonitor.app/api/download?platform=macos-arm64"><img src="https://img.shields.io/badge/Download-macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS ARM"></a>&nbsp;
-  <a href="https://www.worldmonitor.app/api/download?platform=macos-x64"><img src="https://img.shields.io/badge/Download-macOS_Intel-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS Intel"></a>&nbsp;
-  <a href="https://www.worldmonitor.app/api/download?platform=linux-appimage"><img src="https://img.shields.io/badge/Download-Linux_(.AppImage)-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download Linux"></a>
-</p>
-
-<p align="center">
-  <a href="https://www.worldmonitor.app/docs/documentation"><strong>Documentation</strong></a> &nbsp;·&nbsp;
-  <a href="https://github.com/koala73/worldmonitor/releases/latest"><strong>Releases</strong></a> &nbsp;·&nbsp;
-  <a href="https://www.worldmonitor.app/docs/contributing"><strong>Contributing</strong></a>
-</p>
-
-![World Monitor Dashboard](docs/images/worldmonitor-7-mar-2026.jpg)
-
----
-
-## What It Does
-
-- **500+ curated news feeds** across 15 categories, AI-synthesized into briefs
-- **Dual map engine** — 3D globe (globe.gl) and WebGL flat map (deck.gl) with 56 map layer types
-- **Cross-stream correlation** — military, economic, disaster, and escalation signal convergence
-- **Country Instability Index (CII)** — server-authoritative CII v8 stress scoring for 31 Tier-1 countries
-- **Finance radar** — 29 stock exchanges, commodities, crypto, and 7-signal market composite
-- **Local AI** — run everything with Ollama, no API keys required
-- **6 site variants** from a single codebase (world, tech, finance, commodity, happy, energy)
-- **Native desktop app** (Tauri 2) for macOS, Windows, and Linux
-- **25 languages** with native-language feeds and RTL support
-
-For the full feature list, architecture, data sources, and algorithms, see the **[documentation](https://www.worldmonitor.app/docs/documentation)**.
-
----
-
-## Support Status
-
-All site variants and desktop binaries are built from a single codebase and ship from the same release process. The table below clarifies maintenance status so you know which surfaces are safe to depend on.
-
-| Surface | Status | Notes |
-|---------|--------|-------|
-| `worldmonitor.app`, `tech.`, `finance.`, `commodity.`, `happy.`, `energy.` | Stable | Public deployments built from this repo, actively maintained |
-| Desktop binaries (Windows / macOS Apple Silicon / macOS Intel / Linux AppImage) | Stable | One Tauri binary that switches variants in-app; current CI release targets are `full` and `tech` |
-
-Issues filed against any of the above are triaged from the same backlog — see the [issues board](https://github.com/koala73/worldmonitor/issues) for currently-open work.
-
----
-
-## Quick Start
-
-```bash
-git clone https://github.com/koala73/worldmonitor.git
-cd worldmonitor
-npm install
-npm run dev
+```
+knowledge-mcp/
+├── package.json          # 零依赖,node >= 18
+├── server.mjs            # MCP stdio server(JSON-RPC 2.0;2026-07-28 最新语义 + 旧版回退)
+├── lib/
+│   ├── knowledge.mjs     # 分析规划 + 知识检索(纯函数)
+│   └── datasource.mjs    # 数据获取层:端点注册表 + fetch 执行器(超时/错误归一)
+├── data/                 # 懂行数据(纯 JSON/Markdown,可独立维护)
+│   ├── endpoints.json    #   数据端点注册表(62 个核心 RPC,含参数/路径/auth)
+│   ├── routing/          #   分析路由:问题 → 查什么/从哪查/怎么验证/输出什么 + 端点建议
+│   ├── sources/          #   数据源注册表(13 领域)+ 来源可信度
+│   ├── signals/          #   信号/阈值注册表 + CII 方法论
+│   ├── methods/          #   方法论:缓存新鲜度 / 采集去重 / fail-closed
+│   ├── lessons/          #   负知识索引(39 条踩坑教训)
+│   └── schema/           #   条目的 JSON Schema 契约
+└── test/
+    └── smoke.test.mjs    # 26 项测试:逻辑 + 数据层(mock fetch)+ MCP 协议
 ```
 
-Open [localhost:3000](http://localhost:3000) (override the port with `DEV_PORT` in `.env.local`). The app runs with no environment variables.
-
-Feature-specific data sources may require credentials. See `.env.example` for the full list.
-
-For variant-specific development:
+## 启动与配置
 
 ```bash
-npm run dev:tech       # tech.worldmonitor.app
-npm run dev:finance    # finance.worldmonitor.app
-npm run dev:commodity  # commodity.worldmonitor.app
-npm run dev:happy      # happy.worldmonitor.app
-npm run dev:energy     # energy.worldmonitor.app
+node server.mjs            # 或 npm start
+npm test                   # 跑冒烟测试
 ```
 
-See the **[self-hosting guide](https://www.worldmonitor.app/docs/getting-started)** for deployment options (Vercel, Docker, static).
+零依赖,只需 Node >= 18。不需要 npm install。
 
----
+| 环境变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `WM_API_BASE` | `https://worldmonitor.app` | 数据查询的 API 基址(可指向自建/镜像) |
+| `WM_API_KEY` | 空 | Pro 端点密钥,经 `X-WorldMonitor-Key` 注入;匿名端点无需 |
 
-## Tech Stack
+## 暴露的工具
 
-| Category | Technologies |
-|----------|-------------|
-| **Frontend** | Vanilla TypeScript, Vite, globe.gl + Three.js, deck.gl + MapLibre GL |
-| **Desktop** | Tauri 2 (Rust) with Node.js sidecar |
-| **AI/ML** | Ollama / Groq / OpenRouter, Transformers.js (browser-side) |
-| **API Contracts** | Protocol Buffers (290 protos, 35 services), sebuf HTTP annotations |
-| **Deployment** | Vercel Edge Functions (60+), Railway relay, Tauri, PWA |
-| **Caching** | Redis (Upstash), 3-tier cache, CDN, service worker |
+### `plan_analysis`(核心)
+输入一个提问,返回结构化分析计划:
 
-Full stack details in the **[architecture docs](https://www.worldmonitor.app/docs/architecture)**.
+- **information_needs** —— 该查什么(信息需求分解)
+- **sources** —— 从哪查(数据源 id/名称/领域/新鲜度,来自注册表)
+- **signals** —— 相关信号与判定阈值
+- **verification** —— 如何验证(双源交叉、fail-closed、来源可信度、新鲜度)
+- **caveats** —— 必须知道的前提与坑
+- **endpoints** —— 可执行的端点建议(直接用 `query_data` 调用)
+- **output_framework** —— 给用户的有效信息输出结构
 
----
+确定性路由(关键词匹配,不调 LLM),无命中时回退国家综合风险计划。模型应"先规划、再取数、后输出"。
 
-## Programmatic Access
+### `search_knowledge`
+检索懂行知识库:数据源 / 信号 / 负知识(踩坑教训)/ 方法论。做判断前先查对应领域的坑与规则。
 
-World Monitor is built for agents and scripts as well as browsers:
+### `list_endpoints`
+列出 `query_data` 可调用的端点(62 个核心 RPC),支持关键词过滤。
 
-- **MCP server** — `https://worldmonitor.app/mcp` (Streamable HTTP). Public `tools/list`; `tools/call` authenticates with a `X-WorldMonitor-Key` header or OAuth.
-- **REST API** — base `https://api.worldmonitor.app`, described by the [OpenAPI spec](https://worldmonitor.app/openapi.yaml).
-- **CLI** — the official [`worldmonitor`](https://www.npmjs.com/package/worldmonitor) npm package (source in [`cli/`](cli/)):
+### `query_data`(数据获取层)
+按端点 id 执行数据查询,让"查数"真正可执行:
 
-  ```sh
-  npx worldmonitor tools          # run ad-hoc — list every MCP tool (no key needed)
-  npm install -g worldmonitor     # or install the `worldmonitor` (alias `wm`) command
-  worldmonitor risk IR --api-key wm_xxx
-  ```
+- 只传 `data/endpoints.json` 注册表声明的参数(无关参数被过滤)
+- 响应透传上游 JSON(含 `cached_at` / `stale` 新鲜度信封)
+- 失败归一:参数缺失 / HTTP 错误 / 401(auth_required)/ 超时(timeout),以 `isError` 信封返回
 
-- **SDKs** — official zero-dependency client libraries mirroring the CLI: Python [`worldmonitor-sdk`](https://pypi.org/project/worldmonitor-sdk/) (source in [`sdk/python/`](sdk/python/)), Ruby [`worldmonitor`](https://rubygems.org/gems/worldmonitor) ([`sdk/ruby/`](sdk/ruby/)), Go [`github.com/koala73/worldmonitor/sdk/go`](https://pkg.go.dev/github.com/koala73/worldmonitor/sdk/go) ([`sdk/go/`](sdk/go/)). Guide: [worldmonitor.app/docs/sdks](https://www.worldmonitor.app/docs/sdks).
+## Resources(方法论文档)
 
-Agent discovery files: [`llms.txt`](https://worldmonitor.app/llms.txt) · [agent-skills manifest](https://worldmonitor.app/.well-known/agent-skills/index.json) · [api-catalog](https://worldmonitor.app/.well-known/api-catalog). Get an API key at [worldmonitor.app/pro](https://www.worldmonitor.app/pro).
+方法论与端点目录还暴露为 MCP resources,模型可直接读取全文:
 
----
+| URI | 内容 |
+| --- | --- |
+| `wm-knowledge://methods/caching` | 缓存与新鲜度方法论 |
+| `wm-knowledge://methods/sourcing` | 数据采集方法论 |
+| `wm-knowledge://methods/fail-closed` | Fail-Closed 判断原则 |
+| `wm-knowledge://credibility` | 来源可信度分级 |
+| `wm-knowledge://cii` | CII 风险指数方法论 |
+| `wm-knowledge://endpoints` | 端点注册表全文 |
 
-## Flight Data
+## 数据维护
 
-Flight data provided graciously by [Wingbits](https://wingbits.com?utm_source=worldmonitor&utm_medium=referral&utm_campaign=worldmonitor), the most advanced ADS-B flight data solution.
+数据全部在 `data/`,纯 JSON/Markdown,改完即生效(server 每次调用时加载)。
 
----
+| 位置 | 内容 | 维护约定 |
+| --- | --- | --- |
+| `data/endpoints.json` | 数据端点注册表 | 新增端点按相同字段追加;删除端点同步清理 `analysis-routes.json` 的引用 |
+| `data/routing/analysis-routes.json` | 分析路由(问题类型 → 计划) | 新增问题类型时添加 route;keywords 中英双语;`endpoints` 必须存在于端点注册表(测试校验) |
+| `data/sources/registry.json` | 数据源注册表 | 新增/变更数据源时更新;caveats 记录真实坑 |
+| `data/sources/credibility.md` | 来源可信度(wire/gov/intel + tier + propaganda risk) | 与 shared/source-provenance 语义一致 |
+| `data/signals/registry.json` | 信号与阈值 | 阈值改动先改这里,再同步产品 |
+| `data/lessons/index.json` | 负知识索引 | 新踩坑先写 docs/solutions,再浓缩一条到这里(带 source 原文路径) |
+| `data/methods/*.md` | 方法论 | 以"判断准则(给 LLM)"为每篇结尾 |
 
-## Data Sources
+## 接入 MCP 客户端
 
-WorldMonitor aggregates 65+ external providers and APIs across geopolitics, finance, energy, climate, aviation, cyber, military, infrastructure, and news intelligence — surfaced through 500+ curated feeds and tracked by a freshness monitor covering 35 source groups. See the full [data sources catalog](https://www.worldmonitor.app/docs/data-sources) for providers, feed tiers, and collection methods.
+### Claude Code
+```json
+// ~/.claude/settings.json 或项目 .mcp.json
+{
+  "mcpServers": {
+    "wm-knowledge": {
+      "command": "node",
+      "args": ["/绝对路径/server.mjs"]
+    }
+  }
+}
+```
 
----
+### Claude Desktop
+```json
+{
+  "mcpServers": {
+    "wm-knowledge": {
+      "command": "node",
+      "args": ["/绝对路径/server.mjs"]
+    }
+  }
+}
+```
 
-## Contributing
+### 任意 MCP 客户端 / 手动验证
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"plan_analysis","arguments":{"query":"台湾海峡局势是否升级"}}}' \
+  | node server.mjs
+```
 
-Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+## 部署到外部 / Cloudflare Workers
+
+三种方式,共用同一套处理逻辑([lib/mcp-handler.mjs](lib/mcp-handler.mjs)):
+
+| 方式 | 适用 | 操作 |
+| --- | --- | --- |
+| **stdio(本地)** | 个人本地工具 | `node server.mjs` |
+| **网页一键部署(按钮)** | 分享给任何人 | 点 README 顶部按钮,网页登录即部署 |
+| **CLI/CI 部署** | 自托管/自动化 | `npm run deploy` 或 GitHub Actions |
+
+> **部署前置(三种远程方式通用)**:仓库必须包含生成物 `lib/data-inline.mjs`(Workers 无文件系统,数据已内联)。改动 `data/` 后执行 `npm run build:worker` 并提交,否则线上数据过期。
+
+### 网页一键部署(Deploy to Cloudflare 按钮)
+
+README 顶部的按钮是 Cloudflare 官方的 [Deploy to Cloudflare buttons](https://developers.cloudflare.com/workers/platform/deploy-button/):
+
+1. 用户点击 → Cloudflare 网页登录/注册
+2. 授权 GitHub → Cloudflare 把仓库 **fork 到用户账户**
+3. 设置页确认仓库名/Worker 名 → **Workers Builds 自动构建部署**
+4. 部署完成后按 `.dev.vars.example` 设置 `AUTH_TOKEN`(在 Cloudflare 面板 Secrets 或 `wrangler secret put`)
+
+使用前提(均已具备):仓库有 `wrangler.toml` + `main` 入口(worker/index.mjs);secrets 用 `.env.example`/`.dev.vars.example` 声明。
+
+### 一键部署到 Cloudflare Workers(CLI)
 
 ```bash
-npm run typecheck        # Type checking
-npm run build:full       # Production build
+npm run deploy:cli      # 生成内联数据 → 检查 wrangler → 部署 → 输出 URL → 提示配置
 ```
 
----
+首次部署前先 `npx wrangler login`(或设置 `CLOUDFLARE_API_TOKEN`)。部署后按提示设置 secrets:
 
-## License
+```bash
+npx wrangler secret put AUTH_TOKEN    # 生产必设:外部访问令牌
+npx wrangler secret put WM_API_KEY    # 可选:WorldMonitor Pro 密钥
+```
 
-**AGPL-3.0-only** for the source code. Commercial use is permitted under the AGPL when you comply with its copyleft and source-availability terms.
+> 说明:按钮部署(Workers Builds)与 CI 都直接用 `npx wrangler deploy`(package.json 未设自定义 `deploy` script,数据已内联提交,无需 build 步骤)。
 
-| Use Case | Allowed? |
-|----------|----------|
-| Personal / research / educational | Yes, under AGPL-3.0-only |
-| Self-hosted instance | Yes, under AGPL-3.0-only |
-| Fork and modify | Yes, share source under AGPL-3.0-only when required |
-| Commercial use / SaaS | Yes, under AGPL-3.0-only when you comply with AGPL obligations |
-| Private-source proprietary use or official branding rights | Separate commercial or trademark permission needed |
+**CI 自动部署**(可选):推送到 main 时自动部署 —— 在 GitHub 仓库设置 `CF_API_TOKEN` / `CF_ACCOUNT_ID` 两个 secrets 即可(workflow 见 `.github/workflows/deploy.yml`)。
 
-See [LICENSE](LICENSE) for the full code license and [docs/license.mdx](docs/license.mdx) for a plain-language summary. Commercial licensing is available as an alternative option for teams that need non-AGPL terms.
+### 本地 HTTP 预览(Streamable HTTP)
 
-Copyright (C) 2024-2026 Elie Habib. All rights reserved.
+```bash
+npm run build:worker   # 生成内联数据 lib/data-inline.mjs(改动 data/ 后需重跑)
+npm run dev:worker     # npx wrangler dev,默认 http://localhost:8787/mcp
+```
 
----
+**配置(生产必做)**:
 
-## Author
+| 配置 | 方式 | 说明 |
+| --- | --- | --- |
+| `AUTH_TOKEN` | `npx wrangler secret put AUTH_TOKEN` | 外部访问令牌(必设,否则任何人可调) |
+| `WM_API_KEY` | `npx wrangler secret put WM_API_KEY` | WorldMonitor Pro 密钥(query_data 出站用) |
+| `ALLOWED_ORIGINS` | wrangler.toml `[vars]` | Origin 白名单(逗号分隔),防 DNS rebinding;留空不校验 |
+| `WM_API_BASE` | wrangler.toml `[vars]`(默认已配) | query_data 数据源基址 |
 
-**Elie Habib** — [GitHub](https://github.com/koala73)
+鉴权方式:请求头 `Authorization: Bearer <AUTH_TOKEN>` 或 `X-API-Token: <AUTH_TOKEN>`。
 
-## Contributors
+### 客户端远程连接(2025-11-25+ 的 http 类型)
 
-<a href="https://github.com/koala73/worldmonitor/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=koala73/worldmonitor" />
-</a>
+```json
+{
+  "mcpServers": {
+    "wm-knowledge": {
+      "type": "http",
+      "url": "https://wm-knowledge-mcp.<account>.workers.dev/mcp",
+      "headers": { "Authorization": "Bearer <AUTH_TOKEN>" }
+    }
+  }
+}
+```
 
-## Security Acknowledgments
+### 安全说明(Streamable HTTP)
 
-We thank the following researchers for responsibly disclosing security issues:
+- **Origin 校验**:配置 `ALLOWED_ORIGINS` 后,带非白名单 Origin 的请求返回 403(防 DNS rebinding)
+- **鉴权**:不设 `AUTH_TOKEN` 时端点完全开放,公网部署务必设置
+- 服务端无 cookie/session,客户端身份只来自令牌;CORS 头仅用于浏览器直连场景
 
-- **Cody Richard** — Disclosed three security findings covering IPC command exposure, renderer-to-sidecar trust boundary analysis, and fetch patch credential injection architecture (2026)
+## 发布到 MCP Registry(让更多人发现)
 
-See our [Security Policy](./SECURITY.md) for responsible disclosure guidelines.
+目录已备好官方 registry 元数据([server.json](server.json)、package.json 的 `mcpName`),可发布到官方与第三方目录:
 
----
+```bash
+brew install mcp-publisher        # 官方发布 CLI(首次)
+mcp-publisher init                # 生成/校验 server.json(已存在,按需调整 URL)
+mcp-publisher publish             # 发布到 registry.modelcontextprotocol.io
+```
 
-<p align="center">
-  <a href="https://www.worldmonitor.app">worldmonitor.app</a> &nbsp;·&nbsp;
-  <a href="https://www.worldmonitor.app/docs/documentation">docs.worldmonitor.app</a> &nbsp;·&nbsp;
-  <a href="https://finance.worldmonitor.app">finance.worldmonitor.app</a> &nbsp;·&nbsp;
-  <a href="https://commodity.worldmonitor.app">commodity.worldmonitor.app</a>
-</p>
+- **官方 MCP Registry**:`registry.modelcontextprotocol.io`,用 `io.github.koala73/*` 命名空间(GitHub 验证)
+- **第三方目录**(提交即可被主流客户端发现):mcp.so、Smithery(CLI 安装)、Glama、PulseMCP、punkpeye/awesome-mcp-servers(PR)
+- 提交时准备同一份元数据:名称、一句话能力描述、工具数、传输类型(stdio + Streamable HTTP)、仓库 URL、鉴权配置片段
 
-## Star History
+## 生态最佳实践对照(2026)
 
-<a href="https://api.star-history.com/svg?repos=koala73/worldmonitor&type=Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=koala73/worldmonitor&type=Date&theme=dark" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=koala73/worldmonitor&type=Date" />
- </picture>
-</a>
+| 实践 | 头部 MCP 的做法 | 我们的状态 |
+| --- | --- | --- |
+| 传输 | 本地 stdio + 远程 Streamable HTTP | ✅ 双形态 |
+| 小而精 | 每多一个工具都是上下文税 | ✅ 4 个工具,克制 |
+| 一键部署 | LobeHub/Smithery 一键安装 | ✅ `npm run deploy` + CI 自动部署 |
+| 鉴权演进 | 远程标准向 OAuth 2.1 收敛 | ⚠️ 当前 AUTH_TOKEN,可后续升级 |
+| Registry 元数据 | server.json + mcpName | ✅ 已备好 |
+| 协议 | 2025-11-25 主流,2026-07-28 最新语义 | ✅ 双语义兼容 |
+
+## 设计原则
+
+1. **自包含**:不 import 项目任何模块,只读 `data/`。整个目录可复制、可离线运行。
+2. **双层**:结构化 JSON(程序/MCP 精确返回)+ 叙述 Markdown(模型读上下文)。
+3. **可溯源**:每条知识能回到产品文档/代码;负知识带原文路径。
+4. **Fail-closed**:knowledge 内容同样遵守"缺失 = 未知 = 不采信"。

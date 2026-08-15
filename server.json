@@ -1,18 +1,19 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "app.worldmonitor/mcp",
-  "title": "World Monitor",
-  "description": "Live global intelligence: real-time markets, conflicts, country risk, chokepoints, energy, and China decision signals. 59 tools.",
-  "websiteUrl": "https://www.worldmonitor.app",
-  "repository": {
-    "url": "https://github.com/koala73/worldmonitor",
-    "source": "github"
-  },
-  "version": "1.15.0",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.koala73/worldmonitor-knowledge-mcp",
+  "description": "WorldMonitor 懂行知识 MCP:分析规划(查什么/从哪查/怎么验证/输出什么)+ 数据查询(query_data,62 个核心 RPC)+ 方法论 resources。自包含、零依赖,可本地 stdio 或部署 Cloudflare Workers 远程使用。",
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "identifier": "worldmonitor-knowledge-mcp",
+      "version": "0.3.0"
+    }
+  ],
   "remotes": [
     {
-      "type": "streamable-http",
-      "url": "https://worldmonitor.app/mcp"
+      "transport": "streamable_http",
+      "url": "https://wm-knowledge-mcp.<account>.workers.dev/mcp"
     }
   ]
 }

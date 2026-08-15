@@ -1,0 +1,421 @@
+{
+  "schema_version": "1.0",
+  "description": "WorldMonitor 负知识索引 —— 从 docs/solutions 浓缩,供 LLM 消费",
+  "lessons": [
+    {
+      "title": "清除在线产品目录缓存是三层驱逐",
+      "category": "workflow-issues",
+      "module": "product-catalog",
+      "problem_type": "workflow_issue",
+      "severity": "medium",
+      "tags": ["product-catalog", "cache-purge", "cloudflare", "vercel-cdn", "redis", "ais-relay", "cdn-staleness"],
+      "lesson": "产品目录经过 Redis→Vercel CDN→Cloudflare 三层缓存,每层都从自身视角自报'新鲜';purge 端点只清一层且 handler 吞掉错误,purge 返回成功不是证据,HEAD 探测还走 405 分支、描述的只是错误响应。正确做法:先等 ais-relay 部署完成(否则旧数据会被重新种回),按序清 Redis,再用带 cache-buster 的请求在真实 origin 验证(x-product-catalog-source 与 fetchedAt),最后等 Vercel CDN 副本过期(约 11 分钟)再清 Cloudflare 精确 URL。",
+      "apply_when": "定价/目录 PR 合并后公共 API 仍返回旧 tiers;排查被 Vercel CDN 与 Cloudflare 双重前置的端点上'purge 无效'的问题。",
+      "source": "docs/solutions/workflow-issues/purging-the-live-product-catalog-three-layer-cache.md"
+    },
+    {
+      "title": "MCP 配额按凭证类别而非计划族划分,让 API 层订阅者铸出 Pro 层额度",
+      "category": "security-issues",
+      "module": "api/mcp/quota.ts",
+      "problem_type": "security_issue",
+      "severity": "high",
+      "tags": ["mcp-quota", "entitlement-bypass", "plan-family-scoping", "oauth-token-minting", "shared-redis-counter", "deny-list-pattern", "mutation-testing", "quota-display-enforcement-parity"],
+      "lesson": "决策说'仅 API 层保持 50/天'时,实现却按凭证类别(pro OAuth vs user_key)区分:OAuth 铸币门只检查 tier>=1 且 mcpAccess,api_starter/api_business 都满足,于是 API 层用户也能走 OAuth 门拿到目录级 1000/天配额,绕过硬编码上限;且两个凭证类别 INCR 同一个 per-user Redis 计数器,不同限额对同一计数器让拒绝路径的钳制逻辑可能'退还'已消耗额度。正确做法:把计划族作为判别轴——用显式 deny-list 让 API 家族计划回落到 50,展示端与执行端共用同一个解析函数,任何使限额随调用者变化的改动都要对照共享计数器的每个写入方核对。",
+      "apply_when": "实现'仅适用于 X'的范围划分规则时,先命名规则实际指定的判别轴(计划族 vs 凭证类别)并确认它就是规则所指;多代码路径写同一共享计数器时必须对限额达成一致。",
+      "source": "docs/solutions/security-issues/mcp-quota-credential-class-vs-plan-family-scoping-bypass.md"
+    },
+    {
+      "title": "桌面 CLS:立即层级面板挂载需要延迟占位外壳,而不是'受害元素'修复",
+      "category": "performance-issues",
+      "module": "Desktop dashboard panel mount (panel-layout.ts)",
+      "problem_type": "performance_issue",
+      "severity": "high",
+      "tags": ["cls", "core-web-vitals", "layout-shift", "panel-mount", "deferred-shell", "sentry-instrumentation", "debugbear", "desktop-dashboard"],
+      "lesson": "移位归因 API(Chrome largestShiftTarget、DebugBear clsSelector)报告的永远是'受害者'——位置被推走的元素,而不是'施动者'——变大并推动别人的元素,按受害者排名做修复(修 banner、钉面板高度)两轮都无效;且实验室快速冷加载在布局移位敏感窗口前就解析完动态 import,得出假的 lab null,不能据此否定机制。正确做法:在移位发生时对面板几何做 diff(高度变化=mover、位置变化=受害者、新出现=插入),并用插入指纹定位到立即层级(8 个面板)的无占位挂载,让立即层级也走 shell 占位+replaceChild 原位替换契约。",
+      "apply_when": "CLS 指标只体现在线上而实验室复现为干净 null 时,做现场插桩测真实机制而非否定假设;任何异步插入已布局容器(动态 import、懒挂载、IntersectionObserver 触发)的元素都需从首帧预留槽位,无论代码把它叫'立即'还是'延迟'。",
+      "source": "docs/solutions/performance-issues/desktop-cls-immediate-tier-panel-mounts-need-deferred-shells.md"
+    },
+    {
+      "title": "过期的绝对 core.hooksPath 让每个 worktree 都在运行远古的 pre-push 门禁",
+      "category": "performance-issues",
+      "module": "git-hooks-worktree-tooling",
+      "problem_type": "performance_issue",
+      "severity": "high",
+      "tags": ["git-hooks", "husky", "core-hookspath", "worktree", "pre-push", "incremental-tsc", "esbuild-batching", "push-timeout"],
+      "lesson": "多 worktree 仓库中把 core.hooksPath 设为指向某个 checkout 的绝对路径,会让所有 worktree 执行那份'没人看的旧文件'里的 hook(主 checkout 落后 main 816 个提交,跑旧的全量门禁,每次 push 约 4 分钟);即使修好共享 config,每个 worktree 的 config.worktree 里拷贝的绝对覆盖值仍优先,让修复'看似生效实则无效'。正确做法:用相对路径 .husky 使 hook 按各 worktree 自身解析;在 pre-push 首步自检正在执行的 hook 是否位于当前 worktree;bootstrap 时自动解除外来的 per-worktree 覆盖;门禁性能用批处理 esbuild 与增量 tsc 改善。",
+      "apply_when": "排查 push 异常缓慢或执行了 origin/main 上不存在的 gate 步骤时,先查 git config --show-origin core.hooksPath 与 ps 看到的实际 hook 路径;配置修复'不生效'时检查 git 的每一层配置(共享 config 与 config.worktree)。",
+      "source": "docs/solutions/performance-issues/git-push-timeout-stale-core-hookspath.md"
+    },
+    {
+      "title": "单次调用抓取上限静默收窄了基线声称覆盖的时间窗",
+      "category": "logic-errors",
+      "module": "api/mcp/registry/nlp-tools.ts",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["mcp", "keyword-spikes", "baseline-window", "capped-fetch", "redis-zrange", "digest-accumulator", "derived-statistic", "code-review-catch"],
+      "lesson": "派生统计的分子来自带 LIMIT 的抓取、分母来自常量,两者单独看都合理、合起来却矛盾:ZRANGE 加 LIMIT 0 800 在真实产量下只取到约 2 小时数据,却按 48h 基线除,基线归零、spike 决策退化为冷启动规则、倍率膨胀约 23 倍,且输出格式完整、无异常无日志,静默地错。正确做法:把近窗与基线窗拆成两个独立有界查询,分母取实际采样的 pre-window 时长(含分数归一),基线缺失时明确声明不计算;响应里任何重申常量的字段(如 baseline_hours)都必须由实际返回的行计算。",
+      "apply_when": "审查任何比率/基线/每小时/百分比指标时:分别命名分子与分母来源(一个来自抓取、一个来自常量即是此 bug),grep 存储与统计之间的 LIMIT/slice/page_size 等界,并把上限与该存储的真实基数(而非保留常量)对账;有上限的代码路径至少一个测试要越过它。",
+      "source": "docs/solutions/logic-errors/keyword-spike-baseline-window-outran-the-capped-fetch.md"
+    },
+    {
+      "title": "在 seed 发布边界拒绝降级的中国宏观快照",
+      "category": "logic-errors",
+      "module": "China macro seed pipeline",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["china-macro", "seed-validation", "last-good", "launch-readiness"],
+      "lesson": "校验只检查指标槽位数(>=4)验证的是载荷形状而非数据就绪度:过期/不可用的指标仍作为槽位存在,结构性完整但 launchReady=false、status=degraded 的快照能通过校验并在发布时覆盖 last-good 缓存。正确做法:以适配器的就绪判定为真相,并在不可逆的发布边界重复它(launchReady===true 且 status===ready 且槽位数>=4),校验失败时跳过发布并延长现有缓存 TTL。",
+      "apply_when": "为带显式就绪状态的载荷写 seed 校验器时,把形状检查与质量检查作为独立断言,并让就绪状态在发布边界被再次要求。",
+      "source": "docs/solutions/logic-errors/reject-degraded-china-macro-seed-publication.md"
+    },
+    {
+      "title": "让中国新闻覆盖率投影保持 locale 感知",
+      "category": "logic-errors",
+      "module": "News insights seeder and China coverage audit",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["china-coverage", "news-insights", "locale-digest", "seed-audit"],
+      "lesson": "用全局排名的头条或单一英文 digest 推断各来源健康度会漏掉中文 digest 里的来源:新华属于 en digest,而 MIIT/MOFCOM 属于 zh digest,仅从英文 digest 投影会把缺席的中文条目当成功;feed-digest 缓存键含 locale,per-feed 状态只对请求的 locale 权威。正确做法:为每个被审计来源记录评估它的 digest 的 locale,读或预热补充中文 digest,只在来源有有效 generatedAt 且无异常 feed 状态时判定 available,并将审计投影单独发布、从公共载荷剥离。",
+      "apply_when": "构建基于 locale 过滤输入的国家级审计时,把 locale 记在来源旁并显式测试缺失的补充 digest;审计投影与排名/公开载荷分离,并让审计要求投影的 per-source 时间戳与状态。",
+      "source": "docs/solutions/logic-errors/locale-specific-china-news-coverage-projection.md"
+    },
+    {
+      "title": "健康检查不得给刻意未配置的可选来源打分",
+      "category": "logic-errors",
+      "module": "api-health",
+      "problem_type": "logic_error",
+      "severity": "medium",
+      "tags": ["health-monitoring", "seed-meta", "classifier", "status-codes", "optional-sources"],
+      "lesson": "生产者区分 ok/stale/error/unavailable 四种来源状态,分类器却把所有非 ok 折叠进一个降级桶,'该部署从未接入该适配器'与'接入但坏了'被同样判为 SEED_ERROR,产生除申请第三方密钥外无法清除的永久 warn——永远无法清除的告警是 bug 而非噪声,会训练操作员忽略该通道。正确做法:把 sourceState=unavailable 归类为独立 NOT_CONFIGURED 状态并归入 ok 桶(否则会掉进 records===0 分支升级为 crit),新状态必须在 STATUS_COUNTS 注册否则默认回落 warn,并用共享谓词扫遍所有消费状态的表面(problems 映射、控制台失败日志、?history 签名)。",
+      "apply_when": "生产者区分了状态而消费者分类器却折叠成布尔时;声明状态变更前先 grep 所有兄弟过滤器,别只修你正在看的那一处。",
+      "source": "docs/solutions/logic-errors/health-must-not-grade-an-unconfigured-optional-source.md"
+    },
+    {
+      "title": "被拒绝的推送权限被渲染成可重试失败,'重试'变成永久死路",
+      "category": "logic-errors",
+      "module": "pro-activation",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["activation", "onboarding", "push-notifications", "permissions", "terminal-vs-transient", "retry-dead-end", "telemetry-collapse", "test-harness-vacuity", "mutation-testing"],
+      "lesson": "浏览器 Notification.permission 为 denied 是终态,不会再弹窗,却落入通用失败状态渲染'DIDN'T WORK — Try again',按钮必然永远失败;错误字符串是偶然信号,不应作为分类依据。正确做法:从活平台状态(getPushPermission() 返回 denied)而非抛出的错误文本来分类,给结果联合类型加第三个成员 'blocked' 表示'不要重试'并给用户站外修复指引;同时用独立 funnel 事件和持久化 blockedSteps 桶保留被屏蔽用户的可观测性,别把 denial 折叠进 voluntary skip。",
+      "apply_when": "任何失败路径渲染重试 CTA 前先问'重试能成功吗',平台权限/硬配额/撤销授权/策略阻止时答案是否;状态可在新时机到达时,让所有读取走单一访问器并 grep 迁移遗漏。",
+      "source": "docs/solutions/logic-errors/denied-push-permission-rendered-as-retryable-failure.md"
+    },
+    {
+      "title": "单个路由的 401 宣布整个匿名会话死亡——而且 401 从未到达服务器",
+      "category": "logic-errors",
+      "module": "wm-session",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["wm-session", "anonymous-session", "sentry", "axiom", "telemetry-blind-spot", "blast-radius", "diagnosis-technique", "401"],
+      "lesson": "用单一路由的证据推断'cookie 已死'并全站屏蔽匿名流量 15 分钟,是让缓解措施的影响范围超出其证据范围:mint_failed(会话级)与 retry_401(单路由级)被混为一谈;跨库按 IP 对账显示 11/12 个受影响浏览器服务端根本没有 401(客户端 breadcrumb 也有盲区——拦截器在 Sentry 包装前安装,重试请求从未插桩)。正确做法:给事件打路由标签使其可聚合,单一路由只做 per-route 抑制,两个不同路由达到 quorum 才全局屏蔽;抑制存储(原始路径、15 分钟)与证据存储(有界路由标签、60 秒)分离,同秒内的兄弟 200 可撤销证据。",
+      "apply_when": "客户端信号归咎于服务端响应时,先跨遥测库按 IP 确认服务端是否真的发过该响应;任何'全局动作'要求独立观察达到 quorum,并把缓解的影响范围匹配到证据范围。",
+      "source": "docs/solutions/logic-errors/one-route-401-declared-the-whole-anon-session-dead.md"
+    },
+    {
+      "title": "键存在性检查无法检测过期翻译",
+      "category": "logic-errors",
+      "module": "i18n",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["i18n", "localization", "translation-staleness", "ci-guards", "unicode"],
+      "lesson": "翻译回填只补'缺失'键,英文文案被编辑后所有旧翻译以'已存在'被静默跳过;英文数组插入元素后每个后续索引错位,既有翻译变成'错误而非过时',而键计数/结构形状/完整性测试全绿——键存在性检查结构上无法看到过期值。正确做法:记录每个已提交翻译源自哪条英文(provenance baseline,且必须从'实际翻译所依据的英文'种下,如 git show origin/main:en.json),CI 断言 baseline 必须等于当前 en.json;推进 baseline 必须是显式 --adopt-baseline flag,防止被删除的 baseline 被当作首次运行而重新采纳任何内容。",
+      "apply_when": "任何'值会过期'的本地化/派生数据检查:形状与键集合都看不见过期值,加来源基线;注意孤儿键(英文数组删尾元素)需要单独的补集断言。",
+      "source": "docs/solutions/logic-errors/key-existence-checks-cannot-detect-stale-translations.md"
+    },
+    {
+      "title": "TTL 过时审计必须忽略散文注释",
+      "category": "logic-errors",
+      "module": "seeder-health",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["seeders", "health-monitoring", "ttl", "staleness", "static-analysis"],
+      "lesson": "源码文本审计用未约束的模式同时搜注释和配置,导致'TTL 须长于 maxStaleMin'的舰队守卫把注释散文当配置解析(seed-aviation.mjs 注释里先出现的 maxStaleMin 240 被当成数值表达式),守卫静默跳过该 seeder 而非响亮失败;总计数下限能发现覆盖崩溃,却挡不住选择性遗漏。正确做法:把属性匹配锚定到选项行(行首缩进的 ttlSeconds:/maxStaleMin:),为每个发现的盲区配代表性回归夹具,并把已存在的违规显式记入 KNOWN_VIOLATIONS 白名单而非削弱不变式。",
+      "apply_when": "对源码文本做静态审计时把它当解析器:绝不用同一模式同时搜注释与配置;修正后的提取器发现历史债务时,显式记录而不是改生产设置。",
+      "source": "docs/solutions/logic-errors/ttl-staleness-audit-must-ignore-comments.md"
+    },
+    {
+      "title": "GDELT 批量回退夹具的确定性时间戳",
+      "category": "test-failures",
+      "module": "GDELT conflict-event fallback",
+      "problem_type": "test_failure",
+      "severity": "medium",
+      "tags": ["gdelt", "rolling-window", "deterministic-tests", "fixtures"],
+      "lesson": "测试用静态导出时间戳夹具、却用墙钟评估 24 小时滚动窗口,墙钟一过窗口 CI 就随机失败;改动生产过期过滤器会隐藏一个有效的安全检查。正确做法:给每个使用静态夹具的测试注入确定性 now(),让夹具始终位于窗口内,并把过期行为放进显式推进注入时钟的独立测试,不依赖墙钟。",
+      "apply_when": "测试把静态时间戳夹具与滚动窗口/新鲜度逻辑结合时注入 now;保持过期行为测试与正常路径测试分离。",
+      "source": "docs/solutions/test-failures/deterministic-gdelt-bulk-fixtures.md"
+    },
+    {
+      "title": "Bootstrap 健康报告把缺失的紧凑投影报为 EMPTY",
+      "category": "logic-errors",
+      "module": "api/health.js",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["bootstrap-hydration", "seed-meta", "freshness-tracking", "redis", "health"],
+      "lesson": "所有 EMPTY_DATA_OK 来源在 seed-meta 新鲜时都报 OK,即使 Redis 载荷缺失,把'安静的元数据来源'与'必须存在载荷的 bootstrap 投影'混为一谈,投影写入/转换失败时面板空白而健康仍绿;但让所有 EMPTY_DATA_OK 键在载荷缺失时失败又会误伤合法的安静来源(ddosAttacks 等新鲜元数据无载荷是正常)。正确做法:保留宽列表,为必须带载荷的投影加显式严格子集(MISSING_DATA_IS_FAILURE_KEYS),让新鲜元数据+无数据键在一般 EMPTY_DATA_OK 路径之前报 EMPTY。",
+      "apply_when": "向 EMPTY_DATA_OK_KEYS 添加来源时显式决定它属于哪个契约:安静/仅元数据来源可留在宽列表,数据必达的投影必须同时加入严格子集,并为每个新类别补 strict 与 quiet 两个测试期望。",
+      "source": "docs/solutions/logic-errors/bootstrap-key-health-missing-payload.md"
+    },
+    {
+      "title": "Country Scope 过滤器的宽松默认值泄漏了每个无归属告警类别",
+      "category": "logic-errors",
+      "module": "notification-relay",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["notifications", "country-scope", "fail-open", "denylist-vs-allowlist", "attribution", "normalization", "mutation-testing"],
+      "lesson": "per-rule Country Scope 过滤器对无国家归属的事件默认放行(除非类型在两条目的 deny-list 上),大多数发布方不附归属,且一个 normalize helper 的 null 结果经 spread 展开(如 ...(code ? {code} : {}))把'查询失败'变成'字段从未存在',于是限定 10 国的用户收到三个无关类别的 CRITICAL 告警;denylist 修补只加固实例、不加固默认,每个新类型都重新泄漏。正确做法:反转默认——无归属事件只在显式 allowlist(PERMISSIVE_UNATTRIBUTED_EVENT_TYPES,逐条带理由)中才匹配作用域规则;发布方补全归属,名称映射用完整权威数据集;区域事件按成员关系匹配。",
+      "apply_when": "作用域/权限过滤器采用宽松默认+denylist 时,一律反转成 default-DROP+显式 allowlist;normalization 返回 null 时绝不能静默删除数据,要么让映射完整要么让 miss 可观察。",
+      "source": "docs/solutions/logic-errors/country-scope-filter-permissive-default-leaked-unattributed-alerts.md"
+    },
+    {
+      "title": "Pro 激活深链指向了 Pro 计划并不具备的 API Keys 能力",
+      "category": "logic-errors",
+      "module": "pro-activation",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["entitlements", "pro-activation", "deep-link", "mcp", "capability-gating", "stale-closure", "test-fidelity"],
+      "lesson": "激活向导把'Get your API & MCP keys'深链到 Settings 的 API Keys 标签页,而 Pro 计划是 apiAccess:false,mcpAccess:true——卖的是计划没有的能力,落点面板按其能力门控立即展示升级 CTA;naive 改指 MCP 标签页会变成空白弹窗(该 tab 与面板都被 mcpAccess 门控),按 plan key 门控会与目的地门控漂移,构建时读取的能力被长生命周期闭包(完成设置 chip 重放 options)捕获后会在点击时过期。正确做法:按目的地渲染所依赖的同一个谓词(hasFeature('mcpAccess'))门控入口,点击时重读能力,无 opener 的指针被丢弃,回退到无条件渲染的 settings tab。",
+      "apply_when": "深链按其目标面板渲染所依赖的能力来门控(而非你相信隐含它的计划/层级/角色);被捕获进长寿命闭包的能力读取必须在使用时重读;断言'不存在'的空泛测试需让 harness 有能力产生它。",
+      "source": "docs/solutions/logic-errors/activation-deep-link-targeted-a-capability-pro-lacks.md"
+    },
+    {
+      "title": "deriveBillingUxState 的 fallthrough 把已取消但已付费的订阅误分类为 lapsed",
+      "category": "logic-errors",
+      "module": "billing-state",
+      "problem_type": "logic_error",
+      "severity": "high",
+      "tags": ["billing", "entitlements", "subscription-state", "coverage-semantics", "cancelled-but-paid-through", "client-side-derivation", "convex-watch-race"],
+      "lesson": "客户端派生函数无条件把 status=cancelled 映射为 lapsed,没检查 currentPeriodEnd 是否仍在未来,与服务器 isCoveringAt 的语义分歧——cancelled 是'条件覆盖'(period 内仍覆盖),expired 才是无条件不覆盖,两者不可互换;订阅 watch 与 entitlement watch 独立到达,entitlement 快照晚到/仍为 null 时顾客瞬态看到'订阅已结束—重新订阅'。原测试矩阵全绿是因为每个 cancelled 用例要么被 earlier entitledNow 分支短路、要么恰好落在 buggy fallthrough 输出正确的那一个组合。正确做法:逐分支镜像服务器权威 helper(在 fallthrough 前加 cancelled 且 currentPeriodEnd>=now 的守卫),测试矩阵必须显式包含'另一个快照还没到/已过期'的组合,而不是只有双方都加载完成的 settled 组合。",
+      "apply_when": "客户端函数从服务器也管辖的复制数据派生 UX/展示状态时,把服务器规范 helper 当规格逐分支镜像,绝不从状态词的英文含义重推语义;为协调两个独立更新输入的函数写测试时,先写'一个输入未到达'的用例。",
+      "source": "docs/solutions/logic-errors/billing-state-cancelled-but-paid-through-misclassified-as-lapsed.md"
+    },
+    {
+      "title": "一个假设了 seeder 从未拥有的 provider 路由固定的超时",
+      "category": "integration-issues",
+      "module": "seed-forecasts",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["llm", "openrouter", "deepseek", "timeouts", "provider-routing", "seeders", "security-policy"],
+      "lesson": "注释声称'保持高于固定端点的 p50',但没有任何代码实现该固定——OpenRouter 自由路由把同一模型分到延迟差一个数量级的后端,15s 钳制让主 provider 0/12 一次都无法成功;而真正的路由策略存在于 server/_shared/llm.ts,Railway seeder 只继承超时没继承路由,策略被拆在 import 边界两侧。正确做法:把路由策略与它不可分割的超时放在同一模块、两个消费者都导入;按真实调用形状(max_tokens 2500)探测而非玩具提示词;安全策略(屏蔽中国托管 provider)与延迟优化必须一起交付,否则 throughput 排序恰好选中被禁 provider,且要实测'屏蔽是否真有性能代价'。",
+      "apply_when": "常量依赖某项策略时把它们共置,防止被单独采纳;两个模块须共享策略却不能共享 import 时,把策略移到双方都能到达的一侧;任何改默认的行为都要检查既有测试是否因默认路径改变而空泛地跳过。",
+      "source": "docs/solutions/integration-issues/timeout-assumed-a-routing-pin-that-never-existed.md"
+    },
+    {
+      "title": "npm registry 中断让每个 PR 变红,而 ?? 隐藏了原因",
+      "category": "integration-issues",
+      "module": "security-audit",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["npm-audit", "security-audit", "ci-gate", "third-party-outage", "nullish-coalescing", "soft-fail", "diagnostics"],
+      "lesson": "上游 registry 端点返回 gzip 而非 JSON,使整个仓库的 npm audit 失败、合并门禁全红;gate 脚本用 ?? 合并错误字段时,因为 npm 发的是空字符串而非 null/undefined,summary ?? detail ?? fallback 得到空串并压过真实 fallback 与顶层 message,CI 日志只剩一行空行、诊断完全失效。正确做法:用'首个非空'候选提取真实消息,把第三方故障分类(isUpstreamAuditOutage)并拆退出码——可修缺陷硬失败、上游烂软失败+响亮的 warning 注解+escape-hatch flag;诊断外部故障时用同一 commit 两次运行的时间戳对比,而非看其他 PR 的过时绿勾。",
+      "apply_when": "CI 门禁的日志可为空时,任何可达的 fallback 消息必须无条件非空并测试断言;审计任何 a ?? b ?? fallback 链,其输入来自外部 JSON 且空串有语义时;别用 cmd | tail 读退出码。",
+      "source": "docs/solutions/integration-issues/npm-registry-outage-reds-the-security-audit-gate.md"
+    },
+    {
+      "title": "Railway seeder 监听路径可能跳过或过度触发部署",
+      "category": "integration-issues",
+      "module": "railway-seeders",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["railway", "seeders", "watch-paths", "deployment", "health-monitoring"],
+      "lesson": "Railway watch paths 是运行时服务配置而非仓库配置,枚举当前入口与 helper 文件的 seeder 会漏掉新加的传递依赖(main 绿但服务不构建改变行为的那个提交);全量改成 scripts/**+shared/** 又会让无关 helper 改动重建每个 seeder。正确做法:用 scripts/railway-services.json 注册表作为仓库契约,记录每个受管 seeder 的 cron 与仓库相对依赖闭包,导入闭包契约测试在缺新依赖时失败;live 审计同时扫注册表未管理的 seeder 并强制其用宽契约,保证'audit passed'意味着整支舰队被检查过。",
+      "apply_when": "添加/替换 Railway seeder、改其 imports 或 cron 后运行 watch-path 审计;绝不通过 dashboard 手工收窄 watch paths,把闭包加入注册表;恢复陈旧部署用 clean current-main 部署,并验证部署 SHA 与紧凑健康。",
+      "source": "docs/solutions/integration-issues/railway-seeder-watch-paths-can-skip-deployments.md"
+    },
+    {
+      "title": "合并的 seeder 修复在 cron 触发前不算上线——长 cron seeder 要手工回填",
+      "category": "integration-issues",
+      "module": "railway-seeders",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["railway", "seeders", "cron", "health-monitoring", "seed-meta", "backfill", "deployment"],
+      "lesson": "Railway cron seeder 有两条独立生命周期:镜像每次 push 到 main 都重建(buildOnly:true 部署,让服务看起来活跃),但镜像里的代码只在 cron 触发时执行——合并修复立即推进前者、完全不推进后者,周级 cron 造成最多 7 天的'修复看起来坏了'窗口,而 seed-meta 键不会自愈。正确做法:以 Redis 的 seed-meta 键为唯一真相(merged≠deployed≠ran),合并后先对照 cron 节奏,下次 tick 很远就做 Railway 侧手工回填;别把 SUCCESS 部署列表当运行日志(按 meta.buildOnly 过滤),别用 railway run 当生产网络证据,别 import seeder 入口冒烟测试(应 import 纯源模块)。",
+      "apply_when": "称 seeder 修复'已上线'前核对 cron 节奏并决定是否手工回填;健康键在合并后立即 crit 时先查 cron 与合并时间对比,再找回归;注册健康键与上线 seeder 同 PR 会让健康 crit 恰好一个 cron 周期。",
+      "source": "docs/solutions/integration-issues/merged-is-not-ran-long-cron-seeders.md"
+    },
+    {
+      "title": "ArcGIS 分页:resultOffset 必须按返回行数推进,而非请求的页大小",
+      "category": "integration-issues",
+      "module": "seeders",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["arcgis", "portwatch", "pagination", "resultoffset", "exceededtransferlimit", "data-loss"],
+      "lesson": "ArcGIS FeatureServer 按自身 maxRecordCount(1000)钳制每页,不管请求的 resultRecordCount(2000),客户端循环却按请求页大小推进 offset,静默跳过 1000-1999 的连续块;exceededTransferLimit 单独可信但不够——响应格式完好、不报错,只有把行数与期望日历跨度对账才能发现(四个系列相同 1757 行、同一 1000 天洞)。正确做法:offset 按服务器实际返回的行数推进(offset += body.features.length,并在无行时 break);冻结时间序列快照时用'观察天数+枚举缺失天数恰好铺满观测窗口'的完整性断言;多实体行数完全相同是分页伪影的味道。",
+      "apply_when": "任何按页拉取外部 API 的分页循环,增量必须基于返回行数而非请求页大小;服务端钳制(maxRecordCount)是客户端不可假设的层属性。",
+      "source": "docs/solutions/integration-issues/arcgis-pagination-offset-must-advance-by-returned-rows.md"
+    },
+    {
+      "title": "让权限门控的台风数据源留在生产 seed 快照之外",
+      "category": "integration-issues",
+      "module": "Natural event seed pipeline",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["natural-events", "tropical-cyclones", "hko", "source-admission", "railway-seeders"],
+      "lesson": "把发布的实验性数据格式当作运营生产源的许可、仅按坐标匹配附近命名台风、把源风速拷进规范记录却不保留其平均周期与机构标识——都会掩盖来源权威性并制造看似可比的假数字。正确做法:显式记录来源准入决定(JMA 标 EXPERIMENTAL_CAP_NOT_OPERATIONAL),启用新外部 host 前要求来源决策记录+Railway 传输预检+有界 host 策略(仅允许 data.weather.gov.hk、拒绝重定向、限时与限响应大小);每个观测保留 agencyId 与 wind-averaging period,命名系统仅在限定时间/距离窗口内匹配别名,绝不只凭共享风暴名推断等价。",
+      "apply_when": "为多机构气象/权威数据建 seed 时,永远不要只凭名称匹配或坐标近似推断身份等价;源准入必须可见于快照而非静默降级权威。",
+      "source": "docs/solutions/integration-issues/authority-gated-cyclone-seed-sources.md"
+    },
+    {
+      "title": "让 MCP 端点可被爬虫访问,又不让 CDN 把发现响应回放给传输客户端",
+      "category": "integration-issues",
+      "module": "MCP HTTP transport and canonical host routing",
+      "problem_type": "integration_issue",
+      "severity": "high",
+      "tags": ["mcp", "google-search-console", "crawler-access", "canonical-url", "content-negotiation", "http-caching", "vary-header", "cache-poisoning", "http-transport", "json-rpc"],
+      "lesson": "/mcp 与 /.well-known/mcp 按请求头分支(普通 GET→发现文档;GET Accept:text/event-stream→405),若给发现响应加 Cache-Control: public 却不带 Vary,CDN 按 URL 缓存会把 200 JSON 回放给要求 405 的 SSE 流打开请求,通过缓存层重新引入 #4937 的契约违例——in-process 测试永远看不到这种 bug,因为它只活在 edge 缓存里。正确做法:cacheable(response) 必须满足 Vary 涵盖分支读到的每个头(Accept, Last-Event-ID);对活协议端点宁可完全不发可缓存体(no-store);在测试套件中陈述协商矩阵(host×method×headers),并用线上冒烟脚本探公共 edge(先暖缓存再发 SSE GET)。",
+      "apply_when": "任何按请求头分支的 URL 上的响应都要满足 Vary 规则;注意 Vary 断言用 \bAccept\b 会误匹配 accept-encoding,须锚定 \bAccept\b(?!-);重定向响应也可缓存,同样要带 Vary。",
+      "source": "docs/solutions/integration-issues/mcp-crawler-get-and-method-aware-canonical-redirects.md"
+    },
+    {
+      "title": "用流量加权数据而非手工挑选的队列来门控发布",
+      "category": "best-practices",
+      "module": "Bootstrap storage cutover verification (U-K3 gate, #5338)",
+      "problem_type": "best_practice",
+      "severity": "medium",
+      "tags": ["verification-gate", "rollout", "percentile", "sample-size", "traffic-weighted", "decision-criteria", "measurement", "cutover", "p95"],
+      "lesson": "手工挑选'最差 APAC 队列'做门控并不保守:APAC 只是流量少数(用户真正遍布全球),首尔 n≈14-20 的 p95 基本等于最大值,一个慢读就随意摆动(雅加达 n=4 时 222ms、n=32 时 1418ms);窄格上的百分位是噪声不是判决,单时点求值会给出自信而不同的答案。正确做法:门控分母取自真实用户分布——单一流量加权指标(全部读取中清除预算的占比),再拆成两个独立测试:相对测试(候选是否让任何人在样本充足的格子里回归,这是 blocker)+绝对测试(全体流量质量门槛,非 per-region 硬要求);加最小样本阈值让薄格报 inconclusive 而非假 PASS/FAIL。",
+      "apply_when": "写迁移/切换/依赖替换/性能 A-B 的接受标准时,把计划点名的'最差队列'当诊断视图而非门控;审查他人写的门控时看分母是否为选中的子集、百分位有没有样本数守卫、单一阈值是否兼任'是否有人回归'与'质量是否足够'。",
+      "source": "docs/solutions/best-practices/gate-rollouts-on-traffic-weighted-data-not-a-hand-picked-cohort.md"
+    },
+    {
+      "title": "测试守卫断言必须真正触达守卫,测试助手必须重置模块状态",
+      "category": "best-practices",
+      "module": "auth/session tests",
+      "problem_type": "best_practice",
+      "severity": "medium",
+      "tags": ["testing", "regression-tests", "json-stringify", "module-state", "test-helpers", "infinity", "guard-coverage"],
+      "lesson": "JSON.stringify 会把 Infinity/NaN 静默变成 null,测试用 stringify 构造 exp:Infinity 的载荷实际得到 null,在验证顺序中提前命中 typeof 分支,从不触达 Number.isFinite 守卫——声称覆盖守卫的测试却没到那个分支;测试专用 setter 若没有配对的 reset 恢复全部可变字段,泄漏的模块状态会让同一进程的后续测试 flake。正确做法:用 JSON.parse 可读为 Infinity 的文本字面量(如 1e309)构建载荷,并临时移除守卫确认测试变红;reset 助手恢复它触碰的每个字段并配回归测试。",
+      "apply_when": "为带多个顺序检查的守卫/边界/拒绝路径写回归测试时,必须让测试实际走完声称覆盖的路径;任何暴露模块级状态 setter 的测试助手都必须有配对的 reset。",
+      "source": "docs/solutions/best-practices/test-guard-assertions-and-module-state-reset.md"
+    },
+    {
+      "title": "再也看不到目标的检查必须响亮失败,而不是变绿",
+      "category": "best-practices",
+      "module": "mcp/registry, scripts/docs-stats",
+      "problem_type": "best_practice",
+      "severity": "high",
+      "tags": ["testing", "fail-closed", "contract-tests", "guard-coverage", "monkey-patching", "refactor-safety", "mcp"],
+      "lesson": "两种'盲检查'在约 17,900 个测试全绿时隐藏违规:1) 契约测试 monkey-patch 被测单元的 _execute,被替换的路径(含每个 early return)从未被 schema 检查,新工具声明 required 字段却返回裸 error 时全部门禁通过;2) 从另一个文件按路径/regex 解析值的校验器,文件移动后 miss 分支产出 0 而非抛错,把'校验器丢了文件'伪装成'文档过期'——0/null/[] 都是看似可信的值,这就是陷阱。正确做法:stub 时列出它使哪些路径不可达并另法覆盖(离线驱动 fault 分支);解析失败必须 throw('程序不知道答案就要明说');移动文件后用 rg 搜旧路径,编译器不会追踪字符串形式的路径。",
+      "apply_when": "写 mock/stub/monkey-patch 被测单元的契约测试、写按路径/regex/AST 从别的文件取值且带'未找到'分支的校验器、或重构移动文件/重命名导出符号时——构建配置、文档生成器、源码文本守卫都以字符串钉住路径。",
+      "source": "docs/solutions/best-practices/checks-must-fail-closed-when-they-lose-their-target.md"
+    },
+    {
+      "title": "CDN/Redis 出口成本杠杆测试:成本 = 源站未命中率 × 载荷大小,而非客户端数",
+      "category": "best-practices",
+      "module": "bootstrap-hydration",
+      "problem_type": "best_practice",
+      "severity": "high",
+      "tags": ["egress-cost", "cdn-caching", "redis", "bootstrap-hydration", "origin-miss-rate", "measurement-protocol", "cache-deduplication", "rpc-fallthrough"],
+      "lesson": "egress ≈ origin-miss 次数 × 每次传输的载荷大小,客户端数/读者数/请求量不在右侧(CDN 吸收它们)——去重字节相同的键省存储不省带宽(读者不变则读×字节不变),而 one-shot hydration(读即删)配上周期刷新必然产生无 CDN 屏蔽的源站回退流量(forecast 按 bootstrap 份额估 1.3GB/day,实际 ~4.9GB/day,差 4 倍)。正确做法:任何'减少载荷'阶段先跑杠杆测试,丢弃数学净零的;审计 one-shot 载荷的每个周期/按需刷新路径;测量用 EVALSHA/s 流量代理、选无其他读者的探针键、峰值时比 GET 计数而非字节、避开部署期。",
+      "apply_when": "评估任何 CDN/Redis 出口成本优化、判断字节相同键去重是否省带宽、或为带 one-shot hydration + 周期刷新的特性估算成本时;凡以客户端数/读者数/请求量推导成本的一律视为未验证。",
+      "source": "docs/solutions/best-practices/egress-cost-tracks-origin-miss-rate-not-client-count.md"
+    },
+    {
+      "title": "用栈门控与签名匹配做 Sentry 噪声过滤",
+      "category": "best-practices",
+      "module": "Sentry error filtering",
+      "problem_type": "best_practice",
+      "severity": "medium",
+      "tags": ["sentry", "error-filtering", "noise-triage", "before-send", "stack-gating", "browser-extensions", "clerk", "regression-testing"],
+      "lesson": "Sentry 过滤必须区分'应用拥有的错误'与'仅穿过应用帧的错误':ignoreErrors 只用于窄、稳定、明确归属 SDK/浏览器基础设施的消息签名([clerk] failed to load,而非宽泛的 failed to load);通用 Failed to fetch 不能只按消息抑制,需在 beforeSend 里用栈证据(扩展 scheme URL + 精确的 fetch/apply 包装函数,含链式接收者如 r.class.c.value.window.fetch);第一方帧是证据不是所有权证明,monkeypatched global 是例外——扩展包了 window.fetch 会穿过应用 fetch 机制泄漏自己的 rejection,此时有第一方帧也可抑制,但须扩展 URL 与精确包装函数共同确立归属。正确做法:每个抑制测试配一个保留测试证明相邻第一方失败仍上报;匹配终端操作而非子串(锚定正则拒绝 prefetch/fetchContent)。",
+      "apply_when": "排查反复出现的 Sentry 事件且错误有稳定第三方签名、消息通用但栈帧提供强归属、或第一方帧只因浏览器全局包装器才出现时;通用短语(如 Failed to fetch)绝不做纯消息抑制。",
+      "source": "docs/solutions/best-practices/sentry-noise-filtering-with-stack-gating-and-signature-matching.md"
+    },
+    {
+      "title": "Seeder 的辅助 Redis 写入在单次 Upstash 超时时崩溃",
+      "category": "database-issues",
+      "module": "scripts/_seed-utils.mjs",
+      "problem_type": "database_issue",
+      "severity": "medium",
+      "tags": ["redis", "upstash", "seeder", "retry", "seed-utils", "afterpublish", "timeout"],
+      "lesson": "规范键发布 atomicPublish 已带 withRetry,但 afterPublish 里的辅助写入(writeExtraKey 的 SET、extendExistingTtl 的 EXPIRE pipeline)用一次性 fetch,一次 Upstash 延迟尖峰就把瞬时抖动变成整个 seeder 崩溃(FATAL timeout,25 次运行 3 次崩溃 0 成功)。正确做法:让所有 Redis 写助手统一走与 redisCommand/atomicPublish 相同的重试契约(4xx 标记 nonRetryable、429 尊重 Retry-After、5xx/超时/断网指数退避),并为每个新写助手加'首次失败、重试成功'的回归测试。",
+      "apply_when": "在 _seed-utils.mjs 新增 Redis 助手时预先决定其重试契约,写种子数据的助手默认 withRetry;保持错误标记与 redisCommand 一致。",
+      "source": "docs/solutions/database-issues/seeder-auxiliary-redis-writes-timeout.md"
+    },
+    {
+      "title": "唯一匹配不是身份:要对照权威字段验证归属",
+      "category": "conventions",
+      "module": "intelligence company resolution (SEC EDGAR)",
+      "problem_type": "convention",
+      "severity": "high",
+      "tags": ["attribution", "entity-resolution", "fail-closed", "fabricated-data", "mutation-testing", "sec-edgar"],
+      "lesson": "把用户提供的标识(域名/名称)解析为实体时,匹配的'唯一性'不是正确性证据:域标签与 filer 法律名称无关系,恰好一个 filer 以该标签开头回答的是注册表内容而非域名归属(delta 凑巧正确、apple 匹配三个、com 匹配 36 个),错配时返回的是格式完整但属于另一家公司的数据,外观上等同当初导致端点被禁用的伪造。且确认步骤必须建立在权威方实际会填充的字段上:SEC 发布 website 字段但 15 家采样 0 填充,守卫正确、测试全绿、功能却是死的。正确做法:歧义解析为 nothing 而非 tie-break;低精度匹配用权威方发布的字段确认(而非输入的重述);该字段不存在就不要提供该查找键;夹具须镜像真实捕获载荷而非 schema。",
+      "apply_when": "重启用曾产生伪造/错配数据的端点、把用户标识(域名/名称/slug/邮箱域)解析到真实实体、或审查从精确键回退到模糊/前缀匹配的查找时;在围绕确认字段设计前先 fetch 上游确认该字段是否被填充。",
+      "source": "docs/solutions/conventions/unique-match-is-not-identity-verify-attribution-against-an-authoritative-field.md"
+    },
+    {
+      "title": "i18n shell 命名空间是字节预算化的首帧表面——boot 后的文案必须放在它们之外",
+      "category": "conventions",
+      "module": "i18n",
+      "problem_type": "convention",
+      "tags": ["i18n", "en-shell", "first-paint", "byte-budget", "locale-gates", "premium-namespace", "billing-state"],
+      "lesson": "en.shell.json 让首帧 chrome 在全量 locale 加载前渲染英文,shell 命名空间(premium./shell./header./panels./common. 等 SHELL_KEY_PREFIXES)是稀缺的性能预算面(50KB SHELL_BUDGET_BYTES)而非语义分类:只能在 boot 后数据解析完才渲染的文案(如 billing-state CTA 在 Clerk auth + Convex 往返之后)放进去会红 CI(预算超限)或静默增大每个访问者的首帧载荷;反过来把真首帧文案放 shell 外会在完整 locale 加载前闪烁原始 i18n 键。正确做法:加 t() 键前查 SHELL_KEY_PREFIXES,按'能否在完整 locale 加载前渲染'选命名空间,不静默提高 SHELL_BUDGET_BYTES;动态键需显式测试保证每个可能值在 en.json 可解析。",
+      "apply_when": "从 eager chrome 文件(src/App.ts、panel-layout.ts、settings-*、components 下)引用新 t() 键或向既有 shell 命名空间加文案时:问一句该字符串能否在完整 locale 文件加载前渲染,不能就别进 shell 命名空间。",
+      "source": "docs/solutions/conventions/i18n-shell-namespaces-are-byte-budgeted-first-paint-surface.md"
+    },
+    {
+      "title": "验证验证者:对每个检测层做变异测试",
+      "category": "conventions",
+      "module": "test and CI verification infrastructure",
+      "problem_type": "convention",
+      "severity": "high",
+      "tags": ["mutation-testing", "vacuous-tests", "silent-failure", "ci-gates", "security-testing", "test-infrastructure", "guard-coverage"],
+      "lesson": "一个 PR 里四层'用于检测静默失败的层'各自有静默失败:跳过条件(env var 无人设置)让整个套件 0 断言仍退出 0(node --test 全跳过时也退出 0);负断言(列表为空/计数为零/未找到匹配)在输入缩小时静默通过;comment stripper 吃掉 30% 的 api/ 源码使守卫失明;companion 测试用私有 read+match 循环、从不触碰真实扫描路径,恢复真实代码里的 bug 后所有测试仍绿。正确做法:通过故意弄坏检测器并观察它是否注意到(变异)来验证;把真实检查与 companion 路由到共享 seam,加直接属性断言(shrunk 就红),在 top/middle/bottom 三处植入违规;CI 断言'发生了工作'(grep 执行断言数)而非'命令成功'。",
+      "apply_when": "写/审查声称捕获静默失败的测试、CI 工作流或安全守卫时——尤其是作为修复'先前空泛守卫'而新加的层(递归陷阱);审计既有绿测试时记住'数月通过'与'数月执行零断言'从 CI 面板无法区分。",
+      "source": "docs/solutions/conventions/verify-the-verifier-mutation-test-every-detection-layer.md"
+    },
+    {
+      "title": "仪表盘 URL 上的 ?ref= 是联盟归因——内部/SEO 来源标签必须用 utm_* 参数",
+      "category": "conventions",
+      "module": "referral-capture",
+      "problem_type": "convention",
+      "tags": ["referral-capture", "attribution", "utm", "seo-corpus", "checkout", "affonso"],
+      "lesson": "dashboard URL 上的 ?ref=(及 ?wm_referral=)被 referral-capture.ts 读为联盟推荐码:启动时捕获、剥离并持久化到 localStorage(7 天 TTL),后续结账把它转发给 Dodo 作为 affonso_referral;slug 如 seo-country 通过 /^[a-zA-Z0-9_-]+$/ 校验,静默变成挂在真实购买上的假联盟码,最长一周污染联盟支付数据且无任何报错,任何页面级测试都看不见。正确做法:内部来源归因用 utm_source=<family>——Umami 原生上报 UTM 且 referral-capture 忽略它们;采用任何新归因参数名前先查 REFERRAL_PARAM_NAMES。",
+      "apply_when": "给任何会到达 dashboard 的链接(静态语料 CTA、博客、邮件、伙伴链接)加来源/归因参数,或采纳第三方 SEO/分析审计建议的 ?ref= 约定时。",
+      "source": "docs/solutions/conventions/ref-param-is-affiliate-attribution-use-utm-for-internal-source-tags.md"
+    },
+    {
+      "title": "从现有国家数据契约组合国别专属摘要",
+      "category": "design-patterns",
+      "module": "Country Intel",
+      "problem_type": "design_pattern",
+      "severity": "medium",
+      "tags": ["country-intel", "china", "source-attribution", "progressive-loading"],
+      "lesson": "国家深潜页需要不贴合通用经济行的领域专属概览时,应从国家页现有数据契约组合,而非创建平行聚合端点或静默重取同一来源;每个展示信号保留其来源与真实时间戳,绝不从 brief 打开时间伪造观察时间,也不把新鲜度时间戳当健康声明;异步更新必须同时用请求令牌与国家码守卫,防止晚到的旧国家请求填充之后选中的国家;不绕过既有访问边界(门控信号按 partial/unavailable 处理)。正确做法:UI 拥有的小视图模型,每个领域组显式状态(loading/available/partial/stale/unavailable),状态计算留在编排层,面板只渲染收到的模型。",
+      "apply_when": "单个国家需要领域导向概览而通用页不变,且所需事实已有维护中的客户端/水合/RPC 契约、来源可能不完整/过期/门控/晚到时。",
+      "source": "docs/solutions/design-patterns/country-specific-summary-composition.md"
+    },
+    {
+      "title": "用对冲替代硬超时来读缓存(fallback 到 origin)",
+      "category": "design-patterns",
+      "module": "Bootstrap public-tier serving (workers/api-cors-preflight/src/kv-serve.js)",
+      "problem_type": "design_pattern",
+      "severity": "medium",
+      "tags": ["hedge", "hedged-request", "timeout", "cache-fallback", "cloudflare-kv", "edge-serving", "tail-latency", "p95", "latency-budget"],
+      "lesson": "硬超时让一个数字同时回答'读取是否挂起'与'是否该停止等待'两个不同问题;当 fallback 并不可靠地比 primary 快时,收紧超时会抛弃那些慢于超时但仍在客户端预算内的读取——500ms 上限会放弃 0.9%(fast)/3.0%(slow)的预算内读取、把请求交给 ~1600ms p95 的更慢路径,高流量地铁(德里、约翰内斯堡)更高达 11-13%。正确做法:先测量被超时抛弃的带宽(>timeout 但 <budget 的读取占比,这是纯损失),若 fallback 不更可靠就改用 hedge:给 primary 一个 head start,未应答就并行启动 origin,谁先可用服务谁——无需挑选超时值,慢但有效的读仍赢,真挂死的读输给 origin。",
+      "apply_when": "有快速 primary + fallback、fallback 不保证比慢 primary 快(缓存↔origin、edge store↔区域 DB、副本↔主、CDN↔origin)、primary 延迟分布有落入预算内的长尾、且冗余 fallback 请求可接受时用 hedge;fallback 确实可靠更快或重复下游请求不可接受(非幂等写/计费调用)时才用普通超时。",
+      "source": "docs/solutions/design-patterns/hedge-cache-read-against-origin-not-hard-timeout.md"
+    },
+    {
+      "title": "Bootstrap R2 超时测量(KTD7 NO-GO:单区域 R2 无法通过时延门控)",
+      "category": "root",
+      "lesson": "单区域 R2(桶在 ENAM)使每个远端区域读取都是跨星球往返:即使按 p95 保守计算,最快的区域在最大允许超时下超限率 iad1 2.56%、cle1 2.76%,远超 ≤0.2% 的要求,更远区域约 96%;每个有效超时都必须 ≤422ms,调小超时只会更差——这是可行性失败而非测量窗口不足,更多样本无法修复。正确做法:在定任何 serving 超时常量前,按 (tier, execution region) 校准最小样本(n≥2000)与单侧 95% 二项上界(≤0.2%),任一队列/缓存分类器/分母门控不过即判定 no-go,改走全局复制的 KV 路径(KV 读取本地 POP,99.6% 全局读取清除 1200ms 预算)。",
+      "apply_when": "评估边缘/存储 serving 路径时先测量跨区域时延分布与样本量再定超时常量;区域尾部远超预算即判定为架构可行性失败,而非延长测量。",
+      "source": "docs/solutions/2026-07-14-bootstrap-r2-timeout-measurement.md"
+    },
+    {
+      "title": "U-K3 验证门控——KV vs Redis 决策证据(GO)",
+      "category": "root",
+      "lesson": "门控从原计划的'最差 APAC 队列'(hkg1/syd1/bom1/sin1)改为全局流量加权指标:APAC 只是用户少数、首尔 n≈14 不足以判决;用'清除 1200ms 预算的读取占比'作单一决策指标,得到 KV 99.6% vs Redis 84.4%(77.5k/2.48k 读取,8h/16h/24h 读数一致),KV 赢所有大洲并救回非洲(Redis 40% ok)/大洋洲(39%),Vercel 无中东区域而 KV 本地服务 MENA。正确做法:两侧服务端时延按地理连接、用预算通过率(自动流量加权)作门控,保留 per-metro 表作诊断;注意雅加达 16h 读数 1341ms 超预算、样本变肥后 24h 回到 799ms——小样本抖动正如预期,单时点读数不能决定门控。",
+      "apply_when": "做存储/边缘 serving 切换的 go/no-go 时,用流量加权预算通过率而非手工队列;用多窗口稳定性读数确认结论,识别小样本百分位噪声。",
+      "source": "docs/solutions/2026-07-16-bootstrap-kv-verify.md"
+    },
+    {
+      "title": "Bootstrap R2 经济对比(已被 KV 方案取代)",
+      "category": "root",
+      "lesson": "成本决策须基于同口径数学而非直觉:纠正 #5319 的 8.3 GB/day 后,R2 节省是 40.1-15.3=24.8 GB/day 而非重复计算 33.9 GB/day;Upstash pay-as-you-go 只在仪表盘 13 亿命令的期间 P 超过约 211 天时才低于 $400 固定档,否则固定档更优;dashboard 显示的 $219.36 无期间边界,不能当月费也不能年化。该 R2 推荐最终被 2026-07-24 的 KTD7 no-go 推翻(单区域时延可行性失败,见 timeout-measurement 文档),同一目标改由全局复制 KV 达成——成本模型与账户推理仍准确,仅 R2 专项建议退役。",
+      "apply_when": "任何降本/切换决策前先建立同口径的数学对比与敏感性分析(P 未知),不把供应商仪表盘数字当权威月费;技术可行性否决(如 R2 时延)优先于纯成本模型,别为已否决的路径继续投入。",
+      "source": "docs/solutions/2026-07-14-bootstrap-r2-economic-comparison.md"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://worldmonitor.app/knowledge/schema/signal.json",
+  "title": "SignalDefinition",
+  "description": "信号定义条目。描述一种可观测信号、其判定阈值、来源与下游聚合/CII 集成方式。供 MCP tools 与 LLM 消费。",
+  "type": "object",
+  "required": ["id", "type", "name", "description", "sources", "thresholds"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "description": "稳定唯一标识(小写连字符)。" },
+    "type": {
+      "type": "string",
+      "enum": ["internet_outage", "military_flight", "military_vessel", "protest", "ais_disruption", "satellite_fire", "radiation_anomaly", "temporal_anomaly", "sanctions_pressure", "active_strike", "gps_jamming", "climate_anomaly", "airport_delay", "displacement", "advisory"],
+      "description": "信号类型(与 signal-aggregator 的 SignalType 对齐)。"
+    },
+    "name": { "type": "string", "description": "信号名称。" },
+    "description": { "type": "string", "description": "信号含义与判定逻辑。" },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "支撑该信号的数据源 id(引用 sources/registry.json)。"
+    },
+    "thresholds": {
+      "type": "array",
+      "description": "严重度分级阈值表。",
+      "items": {
+        "type": "object",
+        "required": ["level", "condition"],
+        "properties": {
+          "level": { "type": "string", "enum": ["low", "medium", "high", "extreme", "minor", "moderate", "major", "severe", "normal", "validated", "critical"] },
+          "condition": { "type": "string", "description": "判定条件(数值/规则)。" },
+          "effect": { "type": "string", "description": "该级别在系统中的效果(如 CII 加分、地图着色)。" }
+        }
+      }
+    },
+    "integration": { "type": "string", "description": "下游如何消费该信号(聚合、收敛检测、CII 组件等)。" }
+  }
+}

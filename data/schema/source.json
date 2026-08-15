@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://worldmonitor.app/knowledge/schema/source.json",
+  "title": "DataSourceEntry",
+  "description": "数据源注册表条目。描述一个数据提供方及其在 WorldMonitor 中的采集、新鲜度、可信度与回退语义。供 MCP tools 与 LLM 消费。",
+  "type": "object",
+  "required": ["id", "name", "provider", "domain", "data_type", "freshness", "role", "caveats"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "稳定唯一标识(小写连字符),被 signals/registry.json 与 lessons/index.json 引用。"
+    },
+    "name": { "type": "string", "description": "来源名称(如 'UCDP GED')。" },
+    "provider": { "type": "string", "description": "提供方组织(如 'Uppsala Conflict Data Program')。" },
+    "domain": {
+      "type": "string",
+      "enum": ["geopolitical", "military", "infrastructure", "market", "cyber", "climate", "aviation", "intel", "financial", "energy", "disaster", "displacement", "health"],
+      "description": "领域归属。"
+    },
+    "data_type": {
+      "type": "string",
+      "enum": ["api", "rss", "telegram", "adsb", "ais", "tle", "alert", "webcam", "scrape", "table"],
+      "description": "数据形态。"
+    },
+    "description": { "type": "string", "description": "一句话描述该源提供什么数据。" },
+    "freshness": { "type": "string", "description": "更新频率或新鲜度目标(如 '5 minutes'、'annual, lagging')。" },
+    "role": { "type": "string", "description": "在系统中的角色:权威源 / 补充源 / 回退源 / 实时冲突源等。" },
+    "fallback": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "降级回退链(按顺序)。缺失时表示无回退。"
+    },
+    "caveats": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "使用该源必须知道的前提与坑(负知识要点)。"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://worldmonitor.app/knowledge/schema/lesson.json",
+  "title": "LessonEntry",
+  "description": "负知识索引条目。浓缩自 docs/solutions,描述'什么会静默出错、正确做法是什么'。供 LLM 判断时规避。",
+  "type": "object",
+  "required": ["title", "category", "lesson", "apply_when", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "title": { "type": "string", "description": "教训标题(中文)。" },
+    "category": {
+      "type": "string",
+      "enum": ["best-practices", "conventions", "logic-errors", "integration-issues", "performance-issues", "security-issues", "test-failures", "workflow-issues", "design-patterns", "database-issues", "root"],
+      "description": "问题类别(对应 docs/solutions 子目录)。"
+    },
+    "module": { "type": "string", "description": "涉及模块(来自原文 frontmatter)。" },
+    "tags": { "type": "array", "items": { "type": "string" }, "description": "检索标签。" },
+    "problem_type": { "type": "string", "description": "问题类型(来自原文 frontmatter)。" },
+    "severity": { "type": "string", "enum": ["high", "medium", "low"], "description": "严重度。" },
+    "lesson": { "type": "string", "description": "1-3 句核心教训:什么情况会出错、正确做法。" },
+    "apply_when": { "type": "string", "description": "适用场景。" },
+    "source": { "type": "string", "description": "原文相对路径(docs/solutions/...)。" }
+  }
+}

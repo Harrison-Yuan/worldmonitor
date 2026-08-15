@@ -1,0 +1,19 @@
+# WorldMonitor 懂行知识 MCP —— Cloudflare Workers 部署配置
+# 部署:npx wrangler deploy
+# 本地预览:npx wrangler dev(或 npm run dev:worker)
+name = "wm-knowledge-mcp"
+main = "worker/index.mjs"
+compatibility_date = "2026-08-01"
+
+[vars]
+# query_data 出站数据查询的 API 基址
+WM_API_BASE = "https://worldmonitor.app"
+# 可选:WorldMonitor Pro 密钥(敏感,建议用 wrangler secret put WM_API_KEY 而非 vars)
+# WM_API_KEY = ""
+
+# 可选:外部访问令牌(Authorization: Bearer <token> 或 X-API-Token)
+# 建议用 secrets 注入:npx wrangler secret put AUTH_TOKEN
+# AUTH_TOKEN = ""
+
+# 可选:Origin 白名单(逗号分隔),防 DNS rebinding;留空不校验
+# ALLOWED_ORIGINS = "https://app.example.com"
